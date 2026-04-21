@@ -1,33 +1,69 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
-
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Feather } from "@expo/vector-icons";
+import { Tabs } from "expo-router";
+import React from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const insets = useSafeAreaInsets();
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
-        tabBarButton: HapticTab,
-      }}>
+        tabBarActiveTintColor: "#2563eb", // Premium blue
+        tabBarInactiveTintColor: "#94a3b8",
+        tabBarStyle: {
+          borderTopWidth: 0,
+          height: 60 + insets.bottom,
+          paddingBottom: insets.bottom + 8,
+          paddingTop: 8,
+          elevation: 10,
+          shadowColor: "#000",
+          shadowOpacity: 0.08,
+          shadowRadius: 10,
+          backgroundColor: "#fff",
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: "700",
+          marginTop: 2,
+        },
+      }}
+    >
+      {/* HOME / WORKERS SCREEN */}
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: "Workers",
+          tabBarIcon: ({ color, focused }) => (
+            <Feather name="users" size={focused ? 24 : 22} color={color} />
+          ),
         }}
       />
+
+      {/* WALLET SCREEN */}
       <Tabs.Screen
-        name="explore"
+        name="wallet"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: "Wallet",
+          tabBarIcon: ({ color, focused }) => (
+            <Feather
+              name="credit-card"
+              size={focused ? 24 : 22}
+              color={color}
+            />
+          ),
+        }}
+      />
+
+      {/* PROFILE SCREEN */}
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: "Account",
+          tabBarIcon: ({ color, focused }) => (
+            <Feather name="user" size={focused ? 24 : 22} color={color} />
+          ),
         }}
       />
     </Tabs>
