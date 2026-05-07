@@ -1,6 +1,9 @@
 import { Feather } from "@expo/vector-icons";
+
 import { router } from "expo-router";
+
 import React from "react";
+
 import {
   Image,
   Pressable,
@@ -10,7 +13,6 @@ import {
   View,
 } from "react-native";
 
-// --- TYPES ---
 
 interface UserProfile {
   name: string;
@@ -20,7 +22,7 @@ interface UserProfile {
 }
 
 interface MenuOptionProps {
-  icon: keyof typeof Feather.glyphMap; // Type-safe Feather icon names
+  icon: keyof typeof Feather.glyphMap; 
   title: string;
   subtitle?: string;
   color?: string;
@@ -28,10 +30,9 @@ interface MenuOptionProps {
   onPress?: () => void;
 }
 
-// --- COMPONENT ---
+
 
 export default function User() {
-  // Mock User Data
   const user: UserProfile = {
     name: "Jubin Das",
     role: "Administrator",
@@ -39,7 +40,6 @@ export default function User() {
     avatar: "https://i.pravatar.cc/150?u=jubin",
   };
 
-  // Internal Reusable Component with Types
   const MenuOption: React.FC<MenuOptionProps> = ({
     icon,
     title,
@@ -81,7 +81,6 @@ export default function User() {
         <Text style={styles.userRole}>{user.role}</Text>
       </View>
 
-      {/* QUICK STATS */}
       <View style={styles.statsRow}>
         <View style={styles.statBox}>
           <Text style={styles.statNumber}>24</Text>
@@ -99,7 +98,6 @@ export default function User() {
         </View>
       </View>
 
-      {/* SETTINGS SECTION */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Account Settings</Text>
         <View style={styles.menuCard}>
@@ -124,7 +122,6 @@ export default function User() {
         </View>
       </View>
 
-      {/* SUPPORT SECTION */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Support & Legal</Text>
         <View style={styles.menuCard}>
@@ -135,7 +132,7 @@ export default function User() {
             title="Log In"
             color="#dc2626"
             isLast={true}
-            onPress={() => router.push("/login")}
+            onPress={() => router.push("/(auth)")}
           />
         </View>
       </View>

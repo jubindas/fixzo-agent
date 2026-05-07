@@ -1,6 +1,11 @@
+import { ROOT_URL } from "@/url";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import React from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios from "axios";
+import { useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Image,
   Pressable,
@@ -10,7 +15,6 @@ import {
   View,
 } from "react-native";
 
-// --- TYPES ---
 interface WorkerProfile {
   name: string;
   id: string;
@@ -26,14 +30,13 @@ interface WorkerProfile {
 }
 
 interface DetailItemProps {
-  icon: keyof typeof Feather.glyphMap; // Corrected type for Feather icons
+  icon: keyof typeof Feather.glyphMap;
   label: string;
   value: string;
   valueColor?: string;
   isLast?: boolean;
 }
 
-// --- MOCK DATA ---
 const WORKER_DATA: WorkerProfile = {
   name: "Rahul Sharma",
   id: "EMP-9921",
@@ -49,27 +52,95 @@ const WORKER_DATA: WorkerProfile = {
 };
 
 export default function WorkerDetails() {
-  const worker = WORKER_DATA;
-  const progress = (worker.daysRemaining / worker.totalDays) * 100;
 
-  // Color logic for status
-  const isLowTime = worker.daysRemaining < 5;
-  const statusColor = isLowTime ? "#ef4444" : "#2563eb";
+  const router = useRouter();
+
+  const [token, setToken] = useState<string | null>(null);
+
+  const [isLoading, setIsLoading] = useState(true);
+  
+  const [userData, setUserData] = useState<any>(null);
+
+  const worker = WORKER_DATA; 
+  
+
+  useEffect(() => {
+    initializeProfile();
+  }, []);
+
+
+  const initializeProfile = async () => {
+  
+    
+    try {
+      const savedToken = await AsyncStorage.getItem("token-fixzo");
+      if (!savedToken) {
+        router.replace("/(auth)");
+        return;
+      }
+      setToken(savedToken);
+      await fetchWorkerProfile(savedToken);
+    } catch (error) {
+      Alert.alert("Initialization Error", "Failed to load profile settings.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchWorkerProfile = async (authToken: string) => {
+    try {
+      const response = await axios.get(`${ROOT_URL}/user`, {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
+      });
+      setUserData(response.data);
+    } catch (error: any) {
+      if (error.response?.status === 401) {
+        handleLogoutAction(); 
+      } else {
+        console.error("Profile Fetch Error:", error);
+      }
+    }
+  };
+
+  const handleLogoutAction = async () => {
+    try {
+      await AsyncStorage.multiRemove(["token-fixzo", "user-fixzo"]);
+      router.replace("/(auth)");
+    } catch (error) {
+      Alert.alert("Logout Error", "Unable to sign out completely.");
+    }
+  };
 
   const handleLogout = () => {
-    Alert.alert("Logout", "Are you sure you want to sign out?", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert("Sign Out", "Are you sure you want to log out of Fixzo?", [
+      { text: "Stay", style: "cancel" },
       {
         text: "Logout",
         style: "destructive",
-        onPress: () => console.log("User logged out"),
+        onPress: handleLogoutAction,
       },
     ]);
   };
 
+  if (isLoading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color="#2563eb" />
+      </View>
+    );
+  }
+
+  console.log("the user data is", userData);
+
+  const progress = (worker.daysRemaining / worker.totalDays) * 100;
+  const isLowTime = worker.daysRemaining < 5;
+  const statusColor = isLowTime ? "#ef4444" : "#2563eb";
+
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* 1. PROFILE HEADER */}
+      {/* Profile Section */}
       <View style={styles.profileHeader}>
         <View style={styles.avatarContainer}>
           <Image source={{ uri: worker.image }} style={styles.avatar} />
@@ -92,7 +163,7 @@ export default function WorkerDetails() {
         </View>
       </View>
 
-      {/* 2. SUBSCRIPTION / TIME CARD */}
+      {/* Validity Card */}
       <View style={styles.statusCard}>
         <View style={styles.cardHeader}>
           <View>
@@ -136,7 +207,7 @@ export default function WorkerDetails() {
         <Pressable
           style={({ pressed }) => [
             styles.renewBtn,
-            pressed && { opacity: 0.8 },
+            pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
           ]}
         >
           <Text style={styles.renewBtnText}>Extend Membership</Text>
@@ -144,7 +215,7 @@ export default function WorkerDetails() {
         </Pressable>
       </View>
 
-      {/* 3. PROFESSIONAL DETAILS */}
+      {/* Profile Details */}
       <Text style={styles.sectionTitle}>Professional Profile</Text>
       <View style={styles.detailCard}>
         <DetailItem
@@ -171,7 +242,7 @@ export default function WorkerDetails() {
         />
       </View>
 
-      {/* 4. RECENT FEEDBACK */}
+      {/* Feedback Section */}
       <View style={styles.feedbackSection}>
         <View style={styles.rowBetween}>
           <Text style={styles.sectionTitle}>Client Feedback</Text>
@@ -196,7 +267,7 @@ export default function WorkerDetails() {
         </View>
       </View>
 
-      {/* 5. LOGOUT BUTTON */}
+      {/* Footer / Logout */}
       <View style={styles.logoutContainer}>
         <Pressable
           style={({ pressed }) => [
@@ -214,7 +285,6 @@ export default function WorkerDetails() {
   );
 }
 
-// --- REUSABLE COMPONENT ---
 const DetailItem: React.FC<DetailItemProps> = ({
   icon,
   label,
@@ -239,6 +309,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#f8fafc",
     paddingHorizontal: 20,
     paddingTop: 60,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f8fafc",
   },
   profileHeader: {
     flexDirection: "row",

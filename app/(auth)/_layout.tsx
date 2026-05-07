@@ -6,8 +6,8 @@ export default function AuthLayout() {
     <View style={styles.container}>
       <Stack
         screenOptions={{
-          headerShown: false, // hide header for login/signup screens
-          animation: "slide_from_right", // smooth transition
+          headerShown: false,
+          animation: "slide_from_right",
         }}
       />
     </View>

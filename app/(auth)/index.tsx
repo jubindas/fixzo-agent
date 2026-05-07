@@ -1,8 +1,15 @@
 import { ROOT_URL } from "@/url";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
-import { Link, useRouter } from "expo-router";
-import { ChevronRight, Eye, EyeOff, Lock, Mail } from "lucide-react-native";
+import { useRouter } from "expo-router";
+import {
+  ChevronRight,
+  Eye,
+  EyeOff,
+  Lock,
+  Mail,
+  ShieldCheck,
+} from "lucide-react-native";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -23,16 +30,21 @@ export default function Login() {
   const router = useRouter();
 
   const [selectedRole, setSelectedRole] = useState<Role>("Agent");
-  const [email, setEmail] = useState<string>("jubin@gmail.com");
-  const [password, setPassword] = useState<string>("12345678");
+
+  const [email, setEmail] = useState<string>("");
+
+  const [password, setPassword] = useState<string>("");
+
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+
   const [isLoading, setIsLoading] = useState(false);
+
+  const [focusedInput, setFocusedInput] = useState<string | null>(null);
 
   const isValid = email.trim() !== "" && password.trim().length >= 6;
 
   const handleLogin = async () => {
     if (!isValid) return;
-
     setIsLoading(true);
     try {
       const response = await axios.post(`${ROOT_URL}/login`, {
@@ -41,13 +53,12 @@ export default function Login() {
       });
 
       await AsyncStorage.setItem("token-fixzo", response.data.access_token);
-
       await AsyncStorage.setItem(
         "user-fixzo",
         JSON.stringify(response.data.user),
       );
 
-      router.push(
+      router.replace(
         response.data?.user?.role?.name === "agent" ? "/(tabs)" : "/worker",
       );
     } catch (error: any) {
@@ -68,30 +79,34 @@ export default function Login() {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        {/* Header Section */}
         <View style={styles.header}>
-          <View style={styles.logoPlaceholder}>
-            <Lock color="#2563eb" size={32} />
+          <View style={styles.logoContainer}>
+            <View style={styles.logoCircle}>
+              <ShieldCheck color="#2563eb" size={32} strokeWidth={2.5} />
+            </View>
           </View>
-          <Text style={styles.heading}>Welcome Back</Text>
+          <Text style={styles.heading}>Fixzo Portal</Text>
           <Text style={styles.subheading}>
-            Please enter your details to sign in
+            Secure access for authorized personnel
           </Text>
         </View>
 
-        {/* Role Selector (Segmented Control style) */}
-        <View style={styles.roleContainer}>
+        <View style={styles.rolePicker}>
           {(["Agent", "Worker"] as Role[]).map((role) => {
             const active = selectedRole === role;
             return (
               <Pressable
                 key={role}
                 onPress={() => setSelectedRole(role)}
-                style={[styles.roleButton, active && styles.roleButtonActive]}
+                style={[styles.roleTab, active && styles.roleTabActive]}
               >
                 <Text
-                  style={[styles.roleText, active && styles.roleTextActive]}
+                  style={[
+                    styles.roleTabText,
+                    active && styles.roleTabTextActive,
+                  ]}
                 >
                   {role}
                 </Text>
@@ -100,36 +115,52 @@ export default function Login() {
           })}
         </View>
 
-        {/* Input Card */}
-        <View style={styles.inputSection}>
-          <Text style={styles.inputLabel}>Email Address</Text>
-          <View style={styles.inputWrapper}>
-            <Mail size={20} color="#94a3b8" style={styles.inputIcon} />
+        <View style={styles.form}>
+          <Text style={styles.label}>Email Address</Text>
+          <View
+            style={[
+              styles.inputContainer,
+              focusedInput === "email" && styles.inputContainerFocused,
+            ]}
+          >
+            <Mail
+              size={18}
+              color={focusedInput === "email" ? "#2563eb" : "#94a3b8"}
+            />
             <TextInput
               value={email}
               onChangeText={setEmail}
-              placeholder="name@company.com"
+              placeholder="Enter your email"
               keyboardType="email-address"
               autoCapitalize="none"
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor="#cbd5e1"
               style={styles.input}
+              editable={true}
             />
           </View>
 
-          <Text style={styles.inputLabel}>Password</Text>
-          <View style={styles.inputWrapper}>
-            <Lock size={20} color="#94a3b8" style={styles.inputIcon} />
+          <Text style={styles.label}>Password</Text>
+          <View
+            style={[
+              styles.inputContainer,
+              focusedInput === "password" && styles.inputContainerFocused,
+            ]}
+          >
+            <Lock
+              size={18}
+              color={focusedInput === "password" ? "#2563eb" : "#94a3b8"}
+            />
             <TextInput
               value={password}
               onChangeText={setPassword}
-              placeholder="••••••••"
+              placeholder="Enter your password"
               secureTextEntry={!isPasswordVisible}
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor="#cbd5e1"
               style={styles.input}
             />
             <Pressable
               onPress={() => setIsPasswordVisible(!isPasswordVisible)}
-              style={styles.eyeIcon}
+              style={styles.eyeButton}
             >
               {isPasswordVisible ? (
                 <EyeOff size={20} color="#64748b" />
@@ -139,43 +170,43 @@ export default function Login() {
             </Pressable>
           </View>
 
-          <Pressable style={styles.forgotPassword}>
-            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-          </Pressable>
-
-          {/* Action Buttons */}
           <Pressable
             onPress={handleLogin}
             disabled={!isValid || isLoading}
             style={({ pressed }) => [
-              styles.primaryButton,
-              (!isValid || isLoading) && styles.disabledButton,
-              pressed && styles.buttonPressed,
+              styles.loginButton,
+              (!isValid || isLoading) && styles.loginButtonDisabled,
+              pressed && styles.loginButtonPressed,
             ]}
           >
             {isLoading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <View style={styles.buttonInner}>
-                <Text style={styles.primaryButtonText}>Sign In</Text>
+              <View style={styles.loginButtonContent}>
+                <Text style={styles.loginButtonText}>Sign In</Text>
                 <ChevronRight size={20} color="#fff" />
               </View>
             )}
           </Pressable>
 
-          <View style={styles.dividerContainer}>
-            <View style={styles.divider} />
-            <Text style={styles.dividerText}>or</Text>
-            <View style={styles.divider} />
-          </View>
+          {selectedRole === "Worker" && (
+            <View style={styles.footer}>
+              <View style={styles.dividerRow}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>NEW HERE?</Text>
+                <View style={styles.dividerLine} />
+              </View>
 
-          <Link href="/register-worker" asChild>
-            <Pressable style={styles.secondaryButton}>
-              <Text style={styles.secondaryButtonText}>
-                Create Worker Account
-              </Text>
-            </Pressable>
-          </Link>
+              <Pressable
+                style={styles.registerButton}
+                onPress={() => router.push("/register-worker")}
+              >
+                <Text style={styles.registerButtonText}>
+                  Register as Worker
+                </Text>
+              </Pressable>
+            </View>
+          )}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -185,155 +216,178 @@ export default function Login() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#f8fafc", // Very light blue/gray background
   },
   scrollContent: {
-    paddingHorizontal: 24,
-    paddingTop: 60,
+    paddingHorizontal: 28,
+    paddingTop: 80,
     paddingBottom: 40,
   },
   header: {
     alignItems: "center",
     marginBottom: 40,
   },
-  logoPlaceholder: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
-    backgroundColor: "#eff6ff",
+  logoContainer: {
+    marginBottom: 24,
+    shadowColor: "#2563eb",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  logoCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 22,
+    backgroundColor: "#ffffff",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 20,
   },
   heading: {
     fontSize: 28,
-    fontWeight: "700",
-    color: "#1e293b",
+    fontWeight: "800",
+    color: "#0f172a",
+    letterSpacing: -0.5,
   },
   subheading: {
     fontSize: 15,
     color: "#64748b",
-    marginTop: 8,
+    marginTop: 6,
+    textAlign: "center",
   },
-  roleContainer: {
+  rolePicker: {
     flexDirection: "row",
-    backgroundColor: "#f1f5f9",
-    borderRadius: 12,
+    backgroundColor: "#e2e8f0",
+    borderRadius: 14,
     padding: 4,
     marginBottom: 32,
   },
-  roleButton: {
+  roleTab: {
     flex: 1,
     paddingVertical: 12,
     alignItems: "center",
-    borderRadius: 8,
+    borderRadius: 10,
   },
-  roleButtonActive: {
+  roleTabActive: {
     backgroundColor: "#ffffff",
     shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  roleText: {
+  roleTabText: {
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "700",
     color: "#64748b",
   },
-  roleTextActive: {
+  roleTabTextActive: {
     color: "#2563eb",
   },
-  inputSection: {
+  form: {
     width: "100%",
   },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#334155",
+  label: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#475569",
     marginBottom: 8,
     marginLeft: 4,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
-  inputWrapper: {
+  inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#f8fafc",
-    borderWidth: 1,
+    backgroundColor: "#ffffff",
+    borderWidth: 1.5,
     borderColor: "#e2e8f0",
-    borderRadius: 12,
+    borderRadius: 16,
     marginBottom: 20,
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
+    height: 58,
   },
-  inputIcon: {
-    marginRight: 10,
+  inputContainerFocused: {
+    borderColor: "#2563eb",
+    backgroundColor: "#ffffff",
+    shadowColor: "#2563eb",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
   },
   input: {
     flex: 1,
-    height: 52,
     fontSize: 16,
     color: "#1e293b",
+    marginLeft: 12,
+    fontWeight: "500",
   },
-  eyeIcon: {
-    padding: 8,
+  eyeButton: {
+    padding: 4,
   },
-  forgotPassword: {
-    alignSelf: "flex-end",
-    marginBottom: 24,
-  },
-  forgotPasswordText: {
-    color: "#2563eb",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  primaryButton: {
+  loginButton: {
     backgroundColor: "#2563eb",
-    borderRadius: 12,
-    height: 56,
+    borderRadius: 16,
+    height: 58,
+    marginTop: 10,
     justifyContent: "center",
     alignItems: "center",
+    shadowColor: "#2563eb",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  buttonInner: {
+  loginButtonContent: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 4,
   },
-  buttonPressed: {
-    opacity: 0.9,
-    transform: [{ scale: 0.99 }],
+  loginButtonPressed: {
+    transform: [{ scale: 0.98 }],
+    opacity: 0.95,
   },
-  disabledButton: {
-    backgroundColor: "#94a3b8",
+  loginButtonDisabled: {
+    backgroundColor: "#cbd5e1",
+    shadowOpacity: 0,
+    elevation: 0,
   },
-  primaryButtonText: {
+  loginButtonText: {
     color: "#ffffff",
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "700",
   },
-  dividerContainer: {
+  footer: {
+    marginTop: 32,
+  },
+  dividerRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginVertical: 24,
+    marginBottom: 24,
   },
-  divider: {
+  dividerLine: {
     flex: 1,
     height: 1,
     backgroundColor: "#e2e8f0",
   },
   dividerText: {
-    marginHorizontal: 16,
+    marginHorizontal: 12,
     color: "#94a3b8",
-    fontSize: 14,
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1,
   },
-  secondaryButton: {
-    height: 56,
-    borderRadius: 12,
+  registerButton: {
+    height: 58,
+    borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: "#e2e8f0",
+    backgroundColor: "transparent",
   },
-  secondaryButtonText: {
+  registerButtonText: {
     color: "#475569",
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "700",
   },
 });

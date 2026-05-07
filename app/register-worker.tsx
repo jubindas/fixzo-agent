@@ -1,428 +1,764 @@
-﻿import { Feather, Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
+﻿import { ROOT_URL } from "@/url";
+
+import { Feather, Ionicons } from "@expo/vector-icons";
+
+import DateTimePicker from "@react-native-community/datetimepicker";
+
+import { Picker } from "@react-native-picker/picker";
+
+import axios from "axios";
+
+import * as DocumentPicker from "expo-document-picker";
+
+import React, { useEffect, useState } from "react";
+
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
-  TextInputProps,
   View,
 } from "react-native";
 
-// --- TYPES ---
+const THEME = {
+  primary: "#4F46E5",
+  accent: "#10B981",
+  bg: "#F8FAFC",
+  card: "#FFFFFF",
+  text: "#1E293B",
+  muted: "#64748B",
+  border: "#E2E8F0",
+};
 
-interface InputProps extends TextInputProps {
-  label: string;
-  icon: keyof typeof Feather.glyphMap;
-}
-
-// --- REUSABLE COMPONENTS ---
-
-const CustomInput = ({ label, icon, ...props }: InputProps) => (
-  <View style={styles.inputWrapper}>
-    <Text style={styles.inputLabel}>{label}</Text>
-    <View style={styles.inputContainer}>
-      <Feather name={icon} size={18} color="#94a3b8" style={styles.inputIcon} />
+const FormInput = ({ label, icon, ...props }: any) => (
+  <View style={styles.fieldWrapper}>
+    <Text style={styles.fieldLabel}>{label}</Text>
+    <View style={styles.inputRow}>
+      <Feather
+        name={icon}
+        size={18}
+        color={THEME.muted}
+        style={styles.fieldIcon}
+      />
       <TextInput
         style={styles.textInput}
-        placeholderTextColor="#cbd5e1"
+        placeholderTextColor="#94A3B8"
+        selectionColor={THEME.primary}
         {...props}
       />
     </View>
   </View>
 );
 
-const CheckItem = ({
+const FormPicker = ({
   label,
-  selected,
-  onPress,
-}: {
-  label: string;
-  selected: boolean;
-  onPress: () => void;
-}) => (
-  <Pressable
-    style={[styles.docRow, selected && styles.docRowSelected]}
-    onPress={onPress}
-  >
-    <Ionicons
-      name={selected ? "checkbox" : "square-outline"}
-      size={20}
-      color={selected ? "#10b981" : "#cbd5e1"}
-    />
-    <Text style={[styles.docText, selected && styles.docTextSelected]}>
-      {label}
-    </Text>
-  </Pressable>
-);
-
-const StepIndicator = ({ currentStep }: { currentStep: number }) => (
-  <View style={styles.stepContainer}>
-    {[1, 2, 3].map((step) => (
-      <View
-        key={step}
-        style={[
-          styles.stepBar,
-          currentStep >= step ? styles.stepBarActive : styles.stepBarInactive,
-        ]}
+  icon,
+  selectedValue,
+  onValueChange,
+  items,
+}: any) => (
+  <View style={styles.fieldWrapper}>
+    <Text style={styles.fieldLabel}>{label}</Text>
+    <View style={styles.pickerRow}>
+      <Feather
+        name={icon}
+        size={18}
+        color={THEME.muted}
+        style={styles.fieldIcon}
       />
-    ))}
+      <Picker
+        selectedValue={selectedValue}
+        onValueChange={onValueChange}
+        style={styles.pickerElement}
+        dropdownIconColor={THEME.primary}
+      >
+        <Picker.Item label={`Select ${label}`} value="" color={THEME.muted} />
+        {items.map((item: any) => (
+          <Picker.Item key={item.value} label={item.label} value={item.value} />
+        ))}
+      </Picker>
+    </View>
   </View>
 );
 
-// --- MAIN PAGE ---
+const FormDatePicker = ({ label, icon, value, onDateChange }: any) => {
+  const [show, setShow] = useState(false);
 
-export default function RegisterWorker() {
-  const [step, setStep] = useState(1);
-
-  // Form State
-  const [kyc, setKyc] = useState<string[]>([]);
-  const toggleKyc = (id: string) => {
-    setKyc((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
-    );
-  };
-
-  const nextStep = () => setStep((s) => Math.min(3, s + 1));
-  const prevStep = () => setStep((s) => Math.max(1, s - 1));
+  const displayDate = value
+    ? new Date(value).toLocaleDateString()
+    : "Select Date";
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.select({ ios: "padding", android: undefined })}
-    >
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
+    <View style={styles.fieldWrapper}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <Pressable style={styles.inputRow} onPress={() => setShow(true)}>
+        <Feather
+          name={icon}
+          size={18}
+          color={THEME.muted}
+          style={styles.fieldIcon}
+        />
+        <Text
+          style={[
+            styles.textInput,
+            { lineHeight: 50, color: value ? THEME.text : "#94A3B8" },
+          ]}
+        >
+          {displayDate}
+        </Text>
+        <Feather name="calendar" size={16} color={THEME.primary} />
+      </Pressable>
+      {show && (
+        <DateTimePicker
+          value={value ? new Date(value) : new Date()}
+          mode="date"
+          display={Platform.OS === "ios" ? "spinner" : "default"}
+          onChange={(event, selectedDate) => {
+            setShow(false);
+            if (selectedDate) onDateChange(selectedDate.toISOString());
+          }}
+        />
+      )}
+    </View>
+  );
+};
+
+const SectionTitle = ({ title }: { title: string }) => (
+  <Text style={styles.sectionTitle}>{title}</Text>
+);
+
+const SubSectionTitle = ({ title }: { title: string }) => (
+  <Text style={styles.subSectionTitle}>{title}</Text>
+);
+
+export default function RegisterWorker() {
+  const [kycDocument, setKycDocument] = useState<any>(null);
+
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone_number: "",
+    password: "",
+    full_name: "",
+    guardian_relation: "",
+    guardian_name: "",
+    alternative_number: "",
+    registration_date: new Date().toISOString(),
+    present_address: "",
+    present_pincode: "",
+    permanent_address: "",
+    permanent_pincode: "",
+    state_id: "",
+    district_id: "",
+    city_id: "",
+    location_id: "",
+    work_category_id: "",
+    work_subcategory_id: "",
+    work_description: "",
+    kyc_document_type: "",
+    is_interstate: "",
+    ilp_issue_date: "",
+    ilp_expiry_date: "",
+    agent_unique_id: "",
+  });
+
+  const [states, setStates] = useState([]);
+  const [districts, setDistricts] = useState([]);
+  const [cities, setCities] = useState([]);
+  const [locations, setLocations] = useState([]);
+  const [categories, setCategories] = useState([]);
+
+  const dataGroups = {
+    workSubCats: [
+      { label: "Plumber", value: "11" },
+      { label: "Electrician", value: "12" },
+    ],
+    booleanOptions: [
+      { label: "Yes", value: "true" },
+      { label: "No", value: "false" },
+    ],
+    kycDocTypes: [
+      { label: "Aadhaar Card", value: "aadhaar" },
+      { label: "PAN Card", value: "pan" },
+      { label: "Voter ID", value: "voter_id" },
+      { label: "Passport", value: "passport" },
+      { label: "Driving License", value: "driving_license" },
+    ],
+  };
+
+  useEffect(() => {
+    const fetchStates = async () => {
+      try {
+        const response = await axios.get(`${ROOT_URL}/location/states`);
+        setStates(response.data);
+      } catch (error) {
+        console.log("Error fetching states:", error);
+      }
+    };
+    fetchStates();
+  }, []);
+
+  useEffect(() => {
+    const fetchDistricts = async () => {
+      try {
+        const response = await axios.get(`${ROOT_URL}/location/districts`);
+        setDistricts(response.data);
+      } catch (error) {
+        console.log("Error fetching districts:", error);
+      }
+    };
+    fetchDistricts();
+  }, []);
+
+  useEffect(() => {
+    const fetchCities = async () => {
+      try {
+        const response = await axios.get(`${ROOT_URL}/location/cities`);
+        setCities(response.data);
+      } catch (error) {
+        console.log("Error fetching cities:", error);
+      }
+    };
+    fetchCities();
+  }, []);
+
+  useEffect(() => {
+    const fetchLocations = async () => {
+      try {
+        const response = await axios.get(`${ROOT_URL}/location/locations`);
+        setLocations(response.data);
+      } catch (error) {
+        console.log("Error fetching locations:", error);
+      }
+    };
+    fetchLocations();
+  }, []);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await axios.get(`${ROOT_URL}/categories`);
+        setCategories(response.data);
+      } catch (error) {
+        console.log("Error fetching categories:", error);
+      }
+    };
+    fetchCategories();
+  }, []);
+
+  const handleChange = (key: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const pickDocument = async () => {
+    const result = await DocumentPicker.getDocumentAsync({ type: "*/*" });
+    if (!result.canceled) setKycDocument(result.assets[0]);
+  };
+
+  const handleSubmit = async () => {
+    const payload = new FormData();
+
+    (Object.keys(formData) as (keyof typeof formData)[]).forEach((key) => {
+      payload.append(key, formData[key]);
+    });
+
+    if (kycDocument) {
+      payload.append("kyc_document", {
+        uri: kycDocument.uri,
+        name: kycDocument.name,
+        type: kycDocument.mimeType ?? "application/octet-stream",
+      } as any);
+    }
+
+    console.log("===== REGISTRATION PAYLOAD =====");
+    console.log("Text Fields:", JSON.stringify(formData, null, 2));
+    console.log(
+      "KYC Document:",
+      kycDocument
+        ? { name: kycDocument.name, uri: kycDocument.uri, type: kycDocument.mimeType }
+        : "None",
+    );
+    console.log("================================");
+
+    try {
+      const response = await axios.post(
+        `${ROOT_URL}/workers/register`,
+        payload,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        },
+      );
+      console.log("the response is", response.data);
+    } catch (error: any) {
+      console.log("❌ Worker Registration Failed");
+
+      if (error.response) {
+        console.log("📌 Status Code:", error.response.status);
+        console.log("📌 Server Response:", error.response.data);
+
+        const errors = error.response.data?.errors;
+        if (errors) {
+          const errorMessages = Object.values(errors).flat().join("\n");
+          Alert.alert("Registration Failed", errorMessages);
+        } else {
+          Alert.alert(
+            "Error",
+            error.response.data?.message || "Something went wrong",
+          );
+        }
+      } else if (error.request) {
+        Alert.alert("Network Error", "No response received from server");
+      } else {
+        Alert.alert("Error", error.message);
+      }
+
+      console.log("📌 Full Error Object:", error);
+    }
+  };
+
+  return (
+    <SafeAreaView style={styles.safeContainer}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={{ flex: 1 }}
       >
-        {/* HEADER */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.heading}>Member Registration</Text>
-            <Text style={styles.subheading}>
-              Fill all fields for Arunachal Pradesh compliance.
-            </Text>
+        <ScrollView
+          contentContainerStyle={styles.scrollArea}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.brandTitle}>Fixzo Workforce</Text>
+            <Text style={styles.headerSubtitle}>Worker Registration</Text>
           </View>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>STEP {step} OF 3</Text>
-          </View>
-        </View>
 
-        <StepIndicator currentStep={step} />
+          <View style={styles.mainCard}>
 
-        <View style={styles.card}>
-          {step === 1 && (
-            <View style={styles.formSection}>
-              <Text style={styles.innerSectionTitle}>Personal Details</Text>
-              <View style={styles.row}>
-                <View style={{ flex: 1, marginRight: 8 }}>
-                  <CustomInput
-                    label="First Name"
-                    icon="user"
-                    placeholder="JOHN"
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <CustomInput
-                    label="Last Name"
-                    icon="user"
-                    placeholder="DOE"
-                  />
-                </View>
+            {/* ── Section 1: Account Credentials ── */}
+            <SectionTitle title="Account Credentials" />
+
+            <FormInput
+              label="Username"
+              icon="user"
+              placeholder="Choose a username"
+              value={formData.name}
+              onChangeText={(v: string) => handleChange("name", v)}
+            />
+            <FormInput
+              label="Email Address"
+              icon="mail"
+              placeholder="worker@example.com"
+              keyboardType="email-address"
+              value={formData.email}
+              onChangeText={(v: string) => handleChange("email", v)}
+            />
+            <FormInput
+              label="Mobile Number"
+              icon="smartphone"
+              placeholder="10-digit number"
+              keyboardType="phone-pad"
+              value={formData.phone_number}
+              onChangeText={(v: string) => handleChange("phone_number", v)}
+            />
+            <FormInput
+              label="Set Password"
+              icon="lock"
+              placeholder="••••••••"
+              secureTextEntry
+              value={formData.password}
+              onChangeText={(v: string) => handleChange("password", v)}
+            />
+            <FormInput
+              label="Full Name"
+              icon="edit-2"
+              placeholder="Legal name"
+              value={formData.full_name}
+              onChangeText={(v: string) => handleChange("full_name", v)}
+            />
+            <FormDatePicker
+              label="Registration Date"
+              icon="calendar"
+              value={formData.registration_date}
+              onDateChange={(date: string) =>
+                handleChange("registration_date", date)
+              }
+            />
+
+            {/* ── Section 2: Identity & Relations ── */}
+            <SectionTitle title="Identity & Relations" />
+
+            <View style={styles.row}>
+              <View style={{ flex: 1, marginRight: 8 }}>
+                <FormInput
+                  label="Relation"
+                  icon="users"
+                  placeholder="Father/Spouse"
+                  value={formData.guardian_relation}
+                  onChangeText={(v: string) =>
+                    handleChange("guardian_relation", v)
+                  }
+                />
               </View>
+              <View style={{ flex: 1.5 }}>
+                <FormInput
+                  label="Guardian Name"
+                  icon="user-check"
+                  placeholder="Guardian Name"
+                  value={formData.guardian_name}
+                  onChangeText={(v: string) =>
+                    handleChange("guardian_name", v)
+                  }
+                />
+              </View>
+            </View>
 
-              <Text style={styles.innerSectionTitle}>
-                Guardian / Spouse Info
+            <FormInput
+              label="Alternative Contact"
+              icon="phone-call"
+              placeholder="Optional number"
+              keyboardType="phone-pad"
+              value={formData.alternative_number}
+              onChangeText={(v: string) =>
+                handleChange("alternative_number", v)
+              }
+            />
+
+            {/* ── Section 3: Address Details ── */}
+            <SubSectionTitle title="Address Details" />
+
+            <FormInput
+              label="Present Address"
+              icon="map-pin"
+              placeholder="Current address"
+              multiline
+              value={formData.present_address}
+              onChangeText={(v: string) => handleChange("present_address", v)}
+            />
+            <FormInput
+              label="Present Pincode"
+              icon="hash"
+              placeholder="781xxx"
+              keyboardType="number-pad"
+              value={formData.present_pincode}
+              onChangeText={(v: string) => handleChange("present_pincode", v)}
+            />
+            <FormInput
+              label="Permanent Address"
+              icon="home"
+              placeholder="Home address"
+              multiline
+              value={formData.permanent_address}
+              onChangeText={(v: string) =>
+                handleChange("permanent_address", v)
+              }
+            />
+            <FormInput
+              label="Permanent Pincode"
+              icon="hash"
+              placeholder="781xxx"
+              keyboardType="number-pad"
+              value={formData.permanent_pincode}
+              onChangeText={(v: string) =>
+                handleChange("permanent_pincode", v)
+              }
+            />
+
+        
+            <SectionTitle title="Location" />
+
+            <View style={styles.row}>
+              <View style={{ flex: 1, marginRight: 8 }}>
+                <FormPicker
+                  label="State"
+                  icon="map"
+                  selectedValue={formData.state_id}
+                  onValueChange={(v: string) => handleChange("state_id", v)}
+                  items={states.map((item: any) => ({
+                    label: item.name,
+                    value: item.id,
+                  }))}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <FormPicker
+                  label="District"
+                  icon="navigation"
+                  selectedValue={formData.district_id}
+                  onValueChange={(v: string) =>
+                    handleChange("district_id", v)
+                  }
+                  items={districts.map((item: any) => ({
+                    label: item.name,
+                    value: item.id,
+                  }))}
+                />
+              </View>
+            </View>
+
+            <View style={styles.row}>
+              <View style={{ flex: 1, marginRight: 8 }}>
+                <FormPicker
+                  label="City"
+                  icon="map-pin"
+                  selectedValue={formData.city_id}
+                  onValueChange={(v: string) => handleChange("city_id", v)}
+                  items={cities.map((item: any) => ({
+                    label: item.name,
+                    value: item.id,
+                  }))}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <FormPicker
+                  label="Location"
+                  icon="crosshair"
+                  selectedValue={formData.location_id}
+                  onValueChange={(v: string) =>
+                    handleChange("location_id", v)
+                  }
+                  items={locations.map((item: any) => ({
+                    label: item.name,
+                    value: item.id,
+                  }))}
+                />
+              </View>
+            </View>
+
+            {/* ── Section 5: Work Details ── */}
+            <SectionTitle title="Work Details" />
+
+            <FormPicker
+              label="Category"
+              icon="layers"
+              selectedValue={formData.work_category_id}
+              onValueChange={(v: string) =>
+                handleChange("work_category_id", v)
+              }
+              items={categories.map((cat: any) => ({
+                label: cat.name,
+                value: cat.id,
+              }))}
+            />
+            <FormPicker
+              label="Sub Category"
+              icon="grid"
+              selectedValue={formData.work_subcategory_id}
+              onValueChange={(v: string) =>
+                handleChange("work_subcategory_id", v)
+              }
+              items={dataGroups.workSubCats}
+            />
+            <FormInput
+              label="Work Description"
+              icon="info"
+              placeholder="Describe skills"
+              multiline
+              value={formData.work_description}
+              onChangeText={(v: string) =>
+                handleChange("work_description", v)
+              }
+            />
+
+            {/* ── Section 6: KYC & ILP ── */}
+            <SectionTitle title="KYC & ILP" />
+
+            <FormPicker
+              label="KYC Document Type"
+              icon="file-text"
+              selectedValue={formData.kyc_document_type}
+              onValueChange={(v: string) =>
+                handleChange("kyc_document_type", v)
+              }
+              items={dataGroups.kycDocTypes}
+            />
+
+            <View style={styles.row}>
+              <View style={{ flex: 1, marginRight: 8 }}>
+                <FormPicker
+                  label="Interstate?"
+                  icon="globe"
+                  selectedValue={formData.is_interstate}
+                  onValueChange={(v: string) =>
+                    handleChange("is_interstate", v)
+                  }
+                  items={dataGroups.booleanOptions}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <FormInput
+                  label="Agent ID"
+                  icon="tag"
+                  placeholder="ID Number"
+                  value={formData.agent_unique_id}
+                  onChangeText={(v: string) =>
+                    handleChange("agent_unique_id", v)
+                  }
+                />
+              </View>
+            </View>
+
+            <View style={styles.row}>
+              <View style={{ flex: 1, marginRight: 8 }}>
+                <FormDatePicker
+                  label="ILP Issue Date"
+                  icon="calendar"
+                  value={formData.ilp_issue_date}
+                  onDateChange={(date: string) =>
+                    handleChange("ilp_issue_date", date)
+                  }
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <FormDatePicker
+                  label="ILP Expiry Date"
+                  icon="shield"
+                  value={formData.ilp_expiry_date}
+                  onDateChange={(date: string) =>
+                    handleChange("ilp_expiry_date", date)
+                  }
+                />
+              </View>
+            </View>
+
+            <Pressable style={styles.uploadBox} onPress={pickDocument}>
+              <Ionicons name="cloud-upload" size={24} color={THEME.primary} />
+              <Text style={styles.uploadText}>
+                {kycDocument
+                  ? kycDocument.name
+                  : "Tap to Upload KYC Document"}
               </Text>
-              <CustomInput
-                label="Relation Name"
-                icon="users"
-                placeholder="Father/Mother/Spouse Name"
-              />
-
-              <Text style={styles.innerSectionTitle}>Contact</Text>
-              <CustomInput
-                label="Mobile No."
-                icon="phone"
-                placeholder="98765 43210"
-                keyboardType="phone-pad"
-              />
-              <CustomInput
-                label="Alternate No."
-                icon="smartphone"
-                placeholder="Optional"
-                keyboardType="phone-pad"
-              />
-              <CustomInput
-                label="Registration Date"
-                icon="calendar"
-                placeholder="DD/MM/YYYY"
-              />
-            </View>
-          )}
-
-          {step === 2 && (
-            <View style={styles.formSection}>
-              <Text style={styles.innerSectionTitle}>Address Details</Text>
-              <CustomInput
-                label="Present Address"
-                icon="map-pin"
-                placeholder="Building, Street, Area..."
-                multiline
-              />
-              <CustomInput
-                label="Present PIN"
-                icon="hash"
-                placeholder="791111"
-                keyboardType="number-pad"
-              />
-
-              <View style={styles.divider} />
-
-              <CustomInput
-                label="Permanent Address"
-                icon="home"
-                placeholder="Native Village/Town Address"
-                multiline
-              />
-              <CustomInput
-                label="Permanent PIN"
-                icon="hash"
-                placeholder="784001"
-                keyboardType="number-pad"
-              />
-
-              <Text style={styles.innerSectionTitle}>Work Profile</Text>
-              <CustomInput
-                label="Work Category"
-                icon="briefcase"
-                placeholder="e.g. Construction / Retail"
-              />
-              <CustomInput
-                label="Work Description"
-                icon="edit-3"
-                placeholder="Briefly describe your role"
-                multiline
-              />
-            </View>
-          )}
-
-          {step === 3 && (
-            <View style={styles.formSection}>
-              <Text style={styles.innerSectionTitle}>KYC Documents</Text>
-              <View style={styles.grid}>
-                <CheckItem
-                  label="Aadhaar Card"
-                  selected={kyc.includes("aadhaar")}
-                  onPress={() => toggleKyc("aadhaar")}
-                />
-                <CheckItem
-                  label="Voter ID"
-                  selected={kyc.includes("voter")}
-                  onPress={() => toggleKyc("voter")}
-                />
-                <CheckItem
-                  label="Driving Licence"
-                  selected={kyc.includes("dl")}
-                  onPress={() => toggleKyc("dl")}
-                />
-                <CheckItem
-                  label="Ration Card"
-                  selected={kyc.includes("ration")}
-                  onPress={() => toggleKyc("ration")}
-                />
-              </View>
-
-              <View style={styles.ilpBox}>
-                <View style={styles.ilpHeader}>
-                  <Feather name="shield" size={14} color="#b91c1c" />
-                  <Text style={styles.ilpHeaderText}>
-                    VALID ILP DOCUMENT (ARUNACHAL)
-                  </Text>
-                </View>
-                <View style={styles.row}>
-                  <View style={{ flex: 1, marginRight: 8 }}>
-                    <CustomInput
-                      label="Issue Date"
-                      icon="calendar"
-                      placeholder="YYYY-MM-DD"
-                    />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <CustomInput
-                      label="Expiry Date"
-                      icon="calendar"
-                      placeholder="YYYY-MM-DD"
-                    />
-                  </View>
-                </View>
-              </View>
-
-              <Text style={styles.innerSectionTitle}>Office Use</Text>
-              <CustomInput
-                label="Agent Name"
-                icon="user-check"
-                placeholder="Assigned Agent"
-              />
-              <CustomInput
-                label="Employee ID"
-                icon="tag"
-                placeholder="FIX-000"
-              />
-            </View>
-          )}
-
-          {/* CONTROLS */}
-          <View style={styles.buttonRow}>
-            {step > 1 && (
-              <Pressable style={styles.backButton} onPress={prevStep}>
-                <Feather name="chevron-left" size={20} color="#64748b" />
-                <Text style={styles.backButtonText}>Back</Text>
-              </Pressable>
-            )}
-
-            <Pressable
-              style={[styles.primaryButton, step === 1 && { width: "100%" }]}
-              onPress={step === 3 ? () => alert("Success!") : nextStep}
-            >
-              <Text style={styles.primaryButtonText}>
-                {step === 3 ? "Submit & Pay" : "Next Step"}
-              </Text>
-              {step !== 3 && (
-                <Feather name="chevron-right" size={18} color="#fff" />
-              )}
             </Pressable>
+
+            {/* ── Submit Button ── */}
+            <View style={styles.btnContainer}>
+              <Pressable style={styles.submitBtn} onPress={handleSubmit}>
+                <Text style={styles.submitBtnText}>Submit Registration</Text>
+                <Feather name="check-circle" size={18} color="white" />
+              </Pressable>
+            </View>
+
           </View>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f8fafc" },
-  content: { padding: 24, paddingTop: 60 },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 20,
+  safeContainer: { flex: 1, backgroundColor: THEME.bg },
+  scrollArea: { paddingBottom: 60 },
+  header: { padding: 24, paddingTop: 40, backgroundColor: THEME.card },
+  brandTitle: {
+    fontSize: 28,
+    fontWeight: "900",
+    color: THEME.primary,
+    letterSpacing: -1,
   },
-  heading: { fontSize: 22, fontWeight: "800", color: "#1e293b" },
-  subheading: { fontSize: 13, color: "#64748b", marginTop: 4 },
-  badge: {
-    backgroundColor: "#f1f5f9",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
+  headerSubtitle: {
+    fontSize: 14,
+    color: THEME.muted,
+    fontWeight: "600",
+    marginTop: 4,
+    textTransform: "uppercase",
   },
-  badgeText: { fontSize: 10, fontWeight: "800", color: "#64748b" },
-  stepContainer: { flexDirection: "row", gap: 8, marginBottom: 32 },
-  stepBar: { height: 6, flex: 1, borderRadius: 3 },
-  stepBarActive: { backgroundColor: "#10b981" },
-  stepBarInactive: { backgroundColor: "#e2e8f0" },
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 28,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: "#f1f5f9",
+  mainCard: {
+    margin: 16,
+    backgroundColor: THEME.card,
+    borderRadius: 24,
+    padding: 20,
+    elevation: 5,
     shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.05,
-    shadowRadius: 15,
-    elevation: 3,
+    shadowRadius: 20,
   },
-  row: { flexDirection: "row" },
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 20 },
-  divider: { height: 1, backgroundColor: "#f1f5f9", marginVertical: 20 },
-  inputWrapper: { marginBottom: 16 },
-  inputLabel: {
-    fontSize: 10,
+  sectionTitle: {
+    fontSize: 16,
     fontWeight: "800",
-    color: "#64748b",
+    color: THEME.text,
+    marginTop: 24,
+    marginBottom: 16,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.border,
+  },
+  subSectionTitle: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: THEME.primary,
+    marginTop: 10,
+    marginBottom: 15,
     textTransform: "uppercase",
     letterSpacing: 1,
-    marginLeft: 4,
-    marginBottom: 8,
   },
-  inputContainer: {
+  fieldWrapper: { marginBottom: 20 },
+  fieldLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: THEME.muted,
+    textTransform: "uppercase",
+    marginBottom: 8,
+    marginLeft: 4,
+  },
+  inputRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#f8fafc",
+    backgroundColor: THEME.bg,
+    borderRadius: 12,
+    paddingHorizontal: 12,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
-    borderRadius: 16,
-    height: 56,
-    paddingHorizontal: 16,
+    borderColor: THEME.border,
   },
-  inputIcon: { marginRight: 12 },
-  textInput: { flex: 1, fontSize: 15, fontWeight: "600", color: "#1e293b" },
-  innerSectionTitle: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: "#1e293b",
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    borderLeftWidth: 4,
-    borderLeftColor: "#10b981",
-    paddingLeft: 10,
-    marginBottom: 20,
+  fieldIcon: { marginRight: 10 },
+  textInput: {
+    flex: 1,
+    height: 50,
+    fontSize: 15,
+    fontWeight: "600",
+    color: THEME.text,
+  },
+  pickerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: THEME.bg,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: THEME.border,
+    overflow: "hidden",
+  },
+  pickerElement: { flex: 1, height: 50, color: THEME.text, marginLeft: -8 },
+  row: { flexDirection: "row", justifyContent: "space-between" },
+  uploadBox: {
+    borderStyle: "dashed",
+    borderWidth: 2,
+    borderColor: THEME.primary,
+    borderRadius: 16,
+    padding: 25,
+    alignItems: "center",
+    backgroundColor: "#EEF2FF",
     marginTop: 10,
   },
-  docRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#f8fafc",
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-    gap: 10,
-    width: "48%",
+  uploadText: {
+    color: THEME.primary,
+    fontWeight: "700",
+    marginTop: 8,
+    fontSize: 13,
   },
-  docRowSelected: { borderColor: "#10b981", backgroundColor: "#f0fdf4" },
-  docText: { fontSize: 12, color: "#475569", fontWeight: "600" },
-  docTextSelected: { color: "#065f46" },
-  ilpBox: {
-    backgroundColor: "#fef2f2",
-    padding: 16,
+  btnContainer: { marginTop: 28 },
+  submitBtn: {
+    height: 58,
+    backgroundColor: THEME.primary,
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#fee2e2",
-    marginBottom: 24,
-  },
-  ilpHeader: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginBottom: 12,
-  },
-  ilpHeaderText: { fontSize: 10, fontWeight: "800", color: "#b91c1c" },
-  buttonRow: { flexDirection: "row", marginTop: 20, gap: 12 },
-  backButton: {
-    flex: 1,
-    height: 56,
-    borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
-    flexDirection: "row",
-    backgroundColor: "#f1f5f9",
     gap: 8,
   },
-  backButtonText: { color: "#64748b", fontWeight: "700", fontSize: 16 },
-  primaryButton: {
-    flex: 2,
-    height: 56,
-    backgroundColor: "#1e293b",
-    borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 8,
-  },
-  primaryButtonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  formSection: { minHeight: 300 },
+  submitBtnText: { color: "white", fontSize: 16, fontWeight: "700" },
 });

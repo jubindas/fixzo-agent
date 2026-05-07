@@ -1,19 +1,31 @@
+import { Feather } from "@expo/vector-icons";
 import React from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  Pressable,
-} from "react-native";
-import { Feather, Ionicons } from "@expo/vector-icons";
+import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 
-// Mock data for earnings per worker
+
 const EARNINGS = [
-  { id: "1", worker: "Rahul Sharma", amount: 1200, date: "10 Apr", type: "Electrician" },
+  {
+    id: "1",
+    worker: "Rahul Sharma",
+    amount: 1200,
+    date: "10 Apr",
+    type: "Electrician",
+  },
   { id: "2", worker: "Amit Das", amount: 850, date: "09 Apr", type: "Plumber" },
-  { id: "3", worker: "Rakesh Singh", amount: 2100, date: "08 Apr", type: "Carpenter" },
-  { id: "4", worker: "Suman Phukan", amount: 1500, date: "07 Apr", type: "Painter" },
+  {
+    id: "3",
+    worker: "Rakesh Singh",
+    amount: 2100,
+    date: "08 Apr",
+    type: "Carpenter",
+  },
+  {
+    id: "4",
+    worker: "Suman Phukan",
+    amount: 1500,
+    date: "07 Apr",
+    type: "Painter",
+  },
 ];
 
 export default function Wallet() {
@@ -41,13 +53,13 @@ export default function Wallet() {
       {/* QUICK ACTIONS */}
       <View style={styles.actionRow}>
         <View style={styles.actionItem}>
-          <View style={[styles.actionIcon, { backgroundColor: '#eff6ff' }]}>
+          <View style={[styles.actionIcon, { backgroundColor: "#eff6ff" }]}>
             <Feather name="download" size={20} color="#2563eb" />
           </View>
           <Text style={styles.actionText}>Withdraw</Text>
         </View>
         <View style={styles.actionItem}>
-          <View style={[styles.actionIcon, { backgroundColor: '#f0fdf4' }]}>
+          <View style={[styles.actionIcon, { backgroundColor: "#f0fdf4" }]}>
             <Feather name="file-text" size={20} color="#16a34a" />
           </View>
           <Text style={styles.actionText}>Reports</Text>
@@ -68,12 +80,14 @@ export default function Wallet() {
         renderItem={({ item }) => (
           <View style={styles.transactionCard}>
             <View style={styles.workerAvatar}>
-               <Text style={styles.avatarText}>{item.worker.charAt(0)}</Text>
+              <Text style={styles.avatarText}>{item.worker.charAt(0)}</Text>
             </View>
-            
+
             <View style={styles.details}>
               <Text style={styles.workerName}>{item.worker}</Text>
-              <Text style={styles.workerType}>{item.type} • {item.date}</Text>
+              <Text style={styles.workerType}>
+                {item.type} • {item.date}
+              </Text>
             </View>
 
             <View style={styles.amountContainer}>
