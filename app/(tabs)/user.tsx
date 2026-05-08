@@ -1,18 +1,14 @@
 import { Feather } from "@expo/vector-icons";
-
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
-
-import React from "react";
-
+import React, { useEffect, useState } from "react";
 import {
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  View,
+  View
 } from "react-native";
-
 
 interface UserProfile {
   name: string;
@@ -22,7 +18,7 @@ interface UserProfile {
 }
 
 interface MenuOptionProps {
-  icon: keyof typeof Feather.glyphMap; 
+  icon: keyof typeof Feather.glyphMap;
   title: string;
   subtitle?: string;
   color?: string;
@@ -30,14 +26,76 @@ interface MenuOptionProps {
   onPress?: () => void;
 }
 
-
-
 export default function User() {
-  const user: UserProfile = {
-    name: "Jubin Das",
-    role: "Administrator",
-    email: "jubin.das@example.com",
-    avatar: "https://i.pravatar.cc/150?u=jubin",
+
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  const [user, setUser] = useState<UserProfile>({
+    name: "Guest User",
+    role: "Not Logged In",
+    email: "",
+    avatar: "https://i.pravatar.cc/150?u=guest",
+  });
+
+  useEffect(() => {
+    checkLogin();
+  }, []);
+
+  const checkLogin = async () => {
+    try {
+
+      const token = await AsyncStorage.getItem("token-fixzo");
+
+      const storedUser = await AsyncStorage.getItem("user-fixzo");
+
+      if (token) {
+        setIsLoggedIn(true);
+
+        if (storedUser) {
+          const parsedUser = JSON.parse(storedUser);
+
+
+          console.log("the agent is", JSON.stringify(parsedUser, null, 2))
+
+          setUser({
+            name: parsedUser?.name || "User",
+            role: parsedUser?.role?.name || "User",
+            email: parsedUser?.email || "",
+            avatar:
+              parsedUser?.avatar ||
+              "https://i.pravatar.cc/150?u=user",
+          });
+        }
+      } else {
+        setIsLoggedIn(false);
+      }
+
+    } catch (error) {
+      console.log("Error checking login:", error);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+
+      await AsyncStorage.removeItem("token-fixzo");
+
+      await AsyncStorage.removeItem("user-fixzo");
+
+      setIsLoggedIn(false);
+
+      setUser({
+        name: "Guest User",
+        role: "Not Logged In",
+        email: "",
+        avatar: "https://i.pravatar.cc/150?u=guest",
+      });
+
+      router.replace("/(auth)");
+
+    } catch (error) {
+      console.log("Logout Error:", error);
+    }
   };
 
   const MenuOption: React.FC<MenuOptionProps> = ({
@@ -56,62 +114,105 @@ export default function User() {
         pressed && { opacity: 0.7 },
       ]}
     >
-      <View style={[styles.iconContainer, { backgroundColor: `${color}10` }]}>
+      <View
+        style={[
+          styles.iconContainer,
+          { backgroundColor: `${color}10` },
+        ]}
+      >
         <Feather name={icon} size={20} color={color} />
       </View>
+
       <View style={styles.menuTextContent}>
         <Text style={styles.menuTitle}>{title}</Text>
-        {subtitle && <Text style={styles.menuSubtitle}>{subtitle}</Text>}
+
+        {subtitle && (
+          <Text style={styles.menuSubtitle}>
+            {subtitle}
+          </Text>
+        )}
       </View>
-      <Feather name="chevron-right" size={18} color="#cbd5e1" />
+
+      <Feather
+        name="chevron-right"
+        size={18}
+        color="#cbd5e1"
+      />
     </Pressable>
   );
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* PROFILE HEADER */}
-      <View style={styles.header}>
-        <View style={styles.avatarWrapper}>
-          <Image source={{ uri: user.avatar }} style={styles.avatar} />
-          <Pressable style={styles.editBadge}>
-            <Feather name="camera" size={14} color="#fff" />
-          </Pressable>
-        </View>
-        <Text style={styles.userName}>{user.name}</Text>
-        <Text style={styles.userRole}>{user.role}</Text>
-      </View>
+    <ScrollView
+      style={styles.container}
+      showsVerticalScrollIndicator={false}
+    >
 
+    <View style={styles.header}>
+
+  <View style={styles.profileIconContainer}>
+    <Feather
+      name="user"
+      size={42}
+      color="#2563eb"
+    />
+  </View>
+
+  <Text style={styles.userName}>
+    {user.name}
+  </Text>
+
+  <Text style={styles.userRole}>
+    {user.role}
+  </Text>
+
+</View>
+
+      {/* STATS */}
       <View style={styles.statsRow}>
+
         <View style={styles.statBox}>
           <Text style={styles.statNumber}>24</Text>
           <Text style={styles.statLabel}>Workers</Text>
         </View>
+
         <View style={styles.divider} />
+
         <View style={styles.statBox}>
           <Text style={styles.statNumber}>4.8</Text>
           <Text style={styles.statLabel}>Rating</Text>
         </View>
+
         <View style={styles.divider} />
+
         <View style={styles.statBox}>
           <Text style={styles.statNumber}>12</Text>
           <Text style={styles.statLabel}>Projects</Text>
         </View>
+
       </View>
 
+      {/* ACCOUNT SETTINGS */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Account Settings</Text>
+
+        <Text style={styles.sectionTitle}>
+          Account Settings
+        </Text>
+
         <View style={styles.menuCard}>
+
           <MenuOption
             icon="user"
             title="Personal Information"
             subtitle="Name, Email, Phone"
           />
+
           <MenuOption
             icon="shield"
             title="Security"
             subtitle="Password, Biometrics"
             color="#16a34a"
           />
+
           <MenuOption
             icon="bell"
             title="Notifications"
@@ -119,25 +220,60 @@ export default function User() {
             color="#ea580c"
             isLast={true}
           />
+
         </View>
+
       </View>
 
+      {/* SUPPORT */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Support & Legal</Text>
+
+        <Text style={styles.sectionTitle}>
+          Support & Legal
+        </Text>
+
         <View style={styles.menuCard}>
-          <MenuOption icon="help-circle" title="Help Center" color="#64748b" />
-          <MenuOption icon="file-text" title="Privacy Policy" color="#64748b" />
+
           <MenuOption
-            icon="log-in"
-            title="Log In"
-            color="#dc2626"
-            isLast={true}
-            onPress={() => router.push("/(auth)")}
+            icon="help-circle"
+            title="Help Center"
+            color="#64748b"
           />
+
+          <MenuOption
+            icon="file-text"
+            title="Privacy Policy"
+            color="#64748b"
+          />
+
+          {isLoggedIn ? (
+            <MenuOption
+              icon="log-out"
+              title="Logout"
+              subtitle="Sign out from account"
+              color="#dc2626"
+              isLast={true}
+              onPress={handleLogout}
+            />
+          ) : (
+            <MenuOption
+              icon="log-in"
+              title="Log In"
+              subtitle="Access your account"
+              color="#16a34a"
+              isLast={true}
+              onPress={() => router.push("/(auth)")}
+            />
+          )}
+
         </View>
+
       </View>
 
-      <Text style={styles.versionText}>Version 1.0.4 (2026)</Text>
+      <Text style={styles.versionText}>
+        Version 1.0.4 (2026)
+      </Text>
+
     </ScrollView>
   );
 }
@@ -147,6 +283,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f8fafc",
   },
+
+  profileIconContainer: {
+  width: 90,
+  height: 90,
+  borderRadius: 45,
+  backgroundColor: "#eff6ff",
+  justifyContent: "center",
+  alignItems: "center",
+  marginBottom: 16,
+},
+
   header: {
     alignItems: "center",
     paddingTop: 80,
@@ -159,10 +306,12 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 2,
   },
+
   avatarWrapper: {
     position: "relative",
     marginBottom: 16,
   },
+
   avatar: {
     width: 100,
     height: 100,
@@ -170,6 +319,7 @@ const styles = StyleSheet.create({
     borderWidth: 4,
     borderColor: "#eff6ff",
   },
+
   editBadge: {
     position: "absolute",
     bottom: 0,
@@ -183,17 +333,20 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: "#fff",
   },
+
   userName: {
     fontSize: 22,
     fontWeight: "800",
     color: "#0f172a",
   },
+
   userRole: {
     fontSize: 14,
     color: "#64748b",
     fontWeight: "500",
     marginTop: 4,
   },
+
   statsRow: {
     flexDirection: "row",
     backgroundColor: "#fff",
@@ -206,29 +359,35 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 5,
   },
+
   statBox: {
     flex: 1,
     alignItems: "center",
   },
+
   statNumber: {
     fontSize: 18,
     fontWeight: "800",
     color: "#2563eb",
   },
+
   statLabel: {
     fontSize: 12,
     color: "#94a3b8",
     marginTop: 2,
   },
+
   divider: {
     width: 1,
     height: "100%",
     backgroundColor: "#f1f5f9",
   },
+
   section: {
     paddingHorizontal: 20,
     marginTop: 30,
   },
+
   sectionTitle: {
     fontSize: 16,
     fontWeight: "700",
@@ -236,6 +395,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     marginLeft: 4,
   },
+
   menuCard: {
     backgroundColor: "#fff",
     borderRadius: 20,
@@ -243,6 +403,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#f1f5f9",
   },
+
   menuItem: {
     flexDirection: "row",
     alignItems: "center",
@@ -250,6 +411,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#f8fafc",
   },
+
   iconContainer: {
     width: 40,
     height: 40,
@@ -257,20 +419,24 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+
   menuTextContent: {
     flex: 1,
     marginLeft: 14,
   },
+
   menuTitle: {
     fontSize: 15,
     fontWeight: "600",
     color: "#1e293b",
   },
+
   menuSubtitle: {
     fontSize: 12,
     color: "#94a3b8",
     marginTop: 1,
   },
+
   versionText: {
     textAlign: "center",
     color: "#cbd5e1",

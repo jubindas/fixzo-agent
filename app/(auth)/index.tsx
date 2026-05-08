@@ -58,9 +58,24 @@ export default function Login() {
         JSON.stringify(response.data.user),
       );
 
-      router.replace(
-        response.data?.user?.role?.name === "agent" ? "/(tabs)" : "/worker",
-      );
+     const user = response.data?.user;
+
+if (user?.role?.name === "agent") {
+
+  router.replace("/(tabs)");
+
+} else if (user?.role_name === "worker") {
+
+  router.replace("/worker");
+
+} else {
+
+  Alert.alert(
+    "Authentication Failed",
+    "You're not authenticated to access this app."
+  );
+
+}
     } catch (error: any) {
       const userMessage =
         error.response?.data?.message ||

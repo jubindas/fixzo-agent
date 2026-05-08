@@ -1,125 +1,151 @@
+import { ROOT_URL } from "@/url";
+import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
+import axios from "axios";
 import { useRouter } from "expo-router";
-
-import React, { useEffect, useState } from "react";
-
+import React, { useCallback, useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
-  Image,
   Pressable,
+  RefreshControl,
   StyleSheet,
   Text,
   TextInput,
-  View,
+  View
 } from "react-native";
 
-import { ROOT_URL } from "@/url";
-
-import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-
-import axios from "axios";
-
 type Worker = {
-  id: string;
+  id: number;
   name: string;
-  skill: string;
-  location: string;
-  image: string;
+  phone_number: string;
+  created_at: string;
+  worker_profile: {
+    full_name: string;
+    work_description: string;
+    guardian_name: string;
+    guardian_relation: string;
+    district?: { name: string };
+  };
 };
 
-const WORKERS: Worker[] = [
-  {
-    id: "1",
-    name: "Rahul Sharma",
-    skill: "Electrician",
-    location: "Guwahati",
-    image: "https://i.pravatar.cc/150?u=1",
-  },
-  {
-    id: "2",
-    name: "Amit Das",
-    skill: "Plumber",
-    location: "Jorhat",
-    image: "https://i.pravatar.cc/150?u=2",
-  },
-  {
-    id: "3",
-    name: "Rakesh Singh",
-    skill: "Carpenter",
-    location: "Dibrugarh",
-    image: "https://i.pravatar.cc/150?u=3",
-  },
-  {
-    id: "4",
-    name: "Suman Phukan",
-    skill: "Painter",
-    location: "Tezpur",
-    image: "https://i.pravatar.cc/150?u=4",
-  },
-];
-
 export default function Index() {
-
   const router = useRouter();
-
   const [searchQuery, setSearchQuery] = useState("");
-
-  const filteredWorkers = WORKERS.filter(
-    (worker) =>
-      worker.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      worker.skill.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
-
+  const [workers, setWorkers] = useState<Worker[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [token, setToken] = useState<string | null>(null);
 
+  const fetchWorkers = async (authToken: string) => {
+    try {
+      const response = await axios.get(`${ROOT_URL}/workers`, {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          Accept: "application/json",
+        },
+      });
+      setWorkers(Array.isArray(response.data) ? response.data : []); 
+    } catch (error: any) {
+      console.error("API Error:", error.response?.status);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    if (token) await fetchWorkers(token);
+    else setRefreshing(false);
+  }, [token]);
+
   useEffect(() => {
-    const getToken = async () => {
+    const init = async () => {
       const savedToken = await AsyncStorage.getItem("token-fixzo");
       setToken(savedToken);
-
-      console.log("My token is:", savedToken);
+      if (savedToken) fetchWorkers(savedToken);
     };
-
-    getToken();
+    init();
   }, []);
 
-  console.log("the token is", token);
+  const filteredWorkers = workers.filter((w) => {
+    const searchLower = searchQuery.toLowerCase();
+    return (
+      w.name?.toLowerCase().includes(searchLower) ||
+      w.worker_profile?.full_name?.toLowerCase().includes(searchLower) ||
+      w.phone_number?.includes(searchLower)
+    );
+  });
 
-  useEffect(() => {
-    if (!token) return;
+  const getInitials = (name: string) => {
+    return name ? name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2) : "W";
+  };
 
-    const getAllWorkers = async () => {
-      try {
-        const response = await axios.get(`${ROOT_URL}/workers`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "application/json",
-          },
-        });
+  const renderWorkerItem = ({ item }: { item: Worker }) => {
+    const registrationDate = new Date(item.created_at).toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
 
-        console.log(response.data);
-      } catch (error: any) {
-        console.log("API Error:", error.response?.status, error.response?.data);
-      }
-    };
+    return (
+      <Pressable style={styles.card} android_ripple={{ color: '#f1f5f9' }}>
+        {/* Letter Avatar instead of Image */}
+        <View style={styles.avatarPlaceholder}>
+          <Text style={styles.avatarText}>{getInitials(item.worker_profile?.full_name || item.name)}</Text>
+        </View>
+        
+        <View style={styles.infoContainer}>
+          <View style={styles.row}>
+            <Text style={styles.name} numberOfLines={1}>
+              {item.worker_profile?.full_name || item.name}
+            </Text>
+            <View style={styles.idBadge}>
+              <Text style={styles.idText}>#{item.id}</Text>
+            </View>
+          </View>
 
-    getAllWorkers();
-  }, [token]);
+          {/* New Data: Phone and Guardian */}
+          <View style={styles.metaRow}>
+            <Feather name="phone" size={12} color="#64748b" />
+            <Text style={styles.metaText}>{item.phone_number}</Text>
+            <View style={styles.dot} />
+            <Feather name="user" size={12} color="#64748b" />
+            <Text style={styles.metaText}>{item.worker_profile?.guardian_name} ({item.worker_profile?.guardian_relation})</Text>
+          </View>
+
+          <View style={styles.metaRow}>
+            <MaterialCommunityIcons name="tools" size={14} color="#6366f1" />
+            <Text style={[styles.metaText, { color: '#4f46e5', fontWeight: '600' }]}>
+              {item.worker_profile?.work_description || "Expert"}
+            </Text>
+          </View>
+
+          <View style={styles.footerRow}>
+             <View style={styles.metaRow}>
+                <Ionicons name="location-sharp" size={13} color="#f43f5e" />
+                <Text style={styles.metaText}>{item.worker_profile?.district?.name || "Local"}</Text>
+             </View>
+             <Text style={styles.dateText}>Reg: {registrationDate}</Text>
+          </View>
+        </View>
+      </Pressable>
+    );
+  };
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.greeting}>Manage</Text>
+          <Text style={styles.greeting}>Workforce Management</Text>
           <Text style={styles.title}>Service Experts</Text>
         </View>
-        <Pressable
-          style={styles.addBtn}
-          onPress={() => router.push("/register-worker")}
-        >
-          <Feather name="plus" size={18} color="#fff" />
-          <Text style={styles.addBtnText}>Add</Text>
+        <Pressable style={styles.addBtn} onPress={() => router.push({ pathname: "/register-worker", params: { token } })}>
+          <View style={styles.addBtnInner}>
+            <Feather name="plus" size={18} color="#fff" />
+            <Text style={styles.addBtnText}>Add</Text>
+          </View>
         </Pressable>
       </View>
 
@@ -127,67 +153,33 @@ export default function Index() {
         <View style={styles.searchBar}>
           <Feather name="search" size={18} color="#94a3b8" />
           <TextInput
-            placeholder="Search by name or skill..."
+            placeholder="Search name, phone or skill..."
             placeholderTextColor="#94a3b8"
             style={styles.searchInput}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
         </View>
-        <Pressable style={styles.filterBtn}>
-          <Ionicons name="filter-outline" size={20} color="#2563eb" />
-        </Pressable>
       </View>
 
-      <View style={styles.chipContainer}>
-        {["All", "Electrician", "Plumber", "Carpenter"].map((chip, index) => (
-          <View
-            key={chip}
-            style={[styles.chip, index === 0 && styles.activeChip]}
-          >
-            <Text
-              style={[styles.chipText, index === 0 && styles.activeChipText]}
-            >
-              {chip}
-            </Text>
-          </View>
-        ))}
-      </View>
-
-      <FlatList
-        data={filteredWorkers}
-        keyExtractor={(item) => item.id}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 40 }}
-        renderItem={({ item }) => (
-          <Pressable style={styles.card}>
-            <Image source={{ uri: item.image }} style={styles.avatar} />
-
-            <View style={styles.infoContainer}>
-              <View style={styles.row}>
-                <Text style={styles.name}>{item.name}</Text>
-                <View style={styles.statusBadge}>
-                  <Text style={styles.statusText}>Available</Text>
-                </View>
-              </View>
-
-              <View style={styles.metaRow}>
-                <MaterialCommunityIcons
-                  name="briefcase-outline"
-                  size={14}
-                  color="#64748b"
-                />
-                <Text style={styles.metaText}>{item.skill}</Text>
-                <View style={styles.dot} />
-                <Ionicons name="location-outline" size={14} color="#64748b" />
-                <Text style={styles.metaText}>{item.location}</Text>
-              </View>
+      {loading ? (
+        <View style={styles.loaderContainer}><ActivityIndicator size="large" color="#2563eb" /></View>
+      ) : (
+        <FlatList
+          data={filteredWorkers}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={renderWorkerItem}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 30 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#2563eb"]} />}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Feather name="users" size={48} color="#cbd5e1" />
+              <Text style={styles.emptyText}>No workers found</Text>
             </View>
-
-            <Feather name="chevron-right" size={20} color="#cbd5e1" />
-          </Pressable>
-        )}
-      />
+          }
+        />
+      )}
     </View>
   );
 }
@@ -197,33 +189,43 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f8fafc",
     paddingHorizontal: 20,
-    paddingTop: 60,
+    paddingTop: 50,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 24,
+    alignItems: "flex-end",
+    marginBottom: 28,
   },
   greeting: {
-    fontSize: 14,
-    color: "#64748b",
-    fontWeight: "500",
+    fontSize: 11,
+    color: "#6366f1",
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 1.5,
+    marginBottom: 2,
   },
   title: {
-    fontSize: 24,
-    fontWeight: "800",
+    fontSize: 26,
+    fontWeight: "900",
     color: "#0f172a",
+    letterSpacing: -0.5,
   },
   addBtn: {
     backgroundColor: "#2563eb",
+    borderRadius: 12,
+    shadowColor: "#2563eb",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 4,
+  },
+  addBtnInner: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
     gap: 4,
-    marginTop: 10,
   },
   addBtnText: {
     color: "#fff",
@@ -231,86 +233,57 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   searchSection: {
-    flexDirection: "row",
-    gap: 12,
-    marginBottom: 16,
+    marginBottom: 24,
   },
   searchBar: {
-    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#fff",
-    paddingHorizontal: 14,
-    height: 50,
+    paddingHorizontal: 16,
+    height: 52,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: "#e2e8f0",
   },
   searchInput: {
     flex: 1,
-    marginLeft: 10,
+    marginLeft: 12,
     fontSize: 15,
     color: "#1e293b",
   },
-  filterBtn: {
-    width: 50,
-    height: 50,
-    backgroundColor: "#eff6ff",
-    justifyContent: "center",
-    alignItems: "center",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#dbeafe",
-  },
-  chipContainer: {
-    flexDirection: "row",
-    marginBottom: 20,
-    gap: 8,
-  },
-  chip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-  },
-  activeChip: {
-    backgroundColor: "#2563eb",
-    borderColor: "#2563eb",
-  },
-  chipText: {
-    fontSize: 13,
-    color: "#64748b",
-    fontWeight: "600",
-  },
-  activeChipText: {
-    color: "#fff",
-  },
   card: {
     backgroundColor: "#fff",
-    padding: 12,
+    padding: 16,
     borderRadius: 20,
-    marginBottom: 12,
+    marginBottom: 16,
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     borderWidth: 1,
     borderColor: "#f1f5f9",
-    shadowColor: "#000",
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
+    shadowColor: "#64748b",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
     elevation: 2,
   },
-  avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 15,
-    backgroundColor: "#f1f5f9",
+  avatarPlaceholder: {
+    width: 50,
+    height: 50,
+    borderRadius: 14,
+    backgroundColor: "#e0e7ff",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#c7d2fe",
+  },
+  avatarText: {
+    color: "#4338ca",
+    fontWeight: "800",
+    fontSize: 18,
   },
   infoContainer: {
     flex: 1,
-    marginLeft: 16,
+    marginLeft: 14,
   },
   row: {
     flexDirection: "row",
@@ -322,34 +295,61 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     color: "#1e293b",
+    flex: 1,
   },
-  statusBadge: {
-    backgroundColor: "#f0fdf4",
-    paddingHorizontal: 8,
+  idBadge: {
+    backgroundColor: "#f1f5f9",
+    paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
   },
-  statusText: {
-    fontSize: 10,
-    color: "#16a34a",
+  idText: {
+    fontSize: 11,
+    color: "#64748b",
     fontWeight: "700",
-    textTransform: "uppercase",
   },
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    marginBottom: 4,
   },
   metaText: {
-    fontSize: 13,
+    fontSize: 12,
     color: "#64748b",
-    marginLeft: 2,
+    marginLeft: 5,
   },
   dot: {
     width: 3,
     height: 3,
     borderRadius: 2,
     backgroundColor: "#cbd5e1",
-    marginHorizontal: 6,
+    marginHorizontal: 8,
+  },
+  footerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "#f1f5f9",
+  },
+  dateText: {
+    fontSize: 10,
+    color: "#94a3b8",
+    fontWeight: "600",
+  },
+  loaderContainer: {
+    flex: 1,
+    justifyContent: "center",
+  },
+  emptyState: {
+    marginTop: 100,
+    alignItems: "center",
+  },
+  emptyText: {
+    marginTop: 10,
+    fontSize: 15,
+    color: "#94a3b8",
   },
 });

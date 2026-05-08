@@ -7,7 +7,7 @@ export default function RootLayout() {
         headerStyle: { backgroundColor: "#f8fafc" },
         headerTintColor: "#111827",
         headerTitleStyle: { fontWeight: "700" },
-        contentStyle: { backgroundColor: "#f8fafc" },
+        contentStyle: { backgroundColor: "#f8fafc" }
       }}
     >
       <Stack.Screen

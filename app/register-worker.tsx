@@ -4,17 +4,18 @@ import { Feather, Ionicons } from "@expo/vector-icons";
 
 import DateTimePicker from "@react-native-community/datetimepicker";
 
-import { Picker } from "@react-native-picker/picker";
-
 import axios from "axios";
 
 import * as DocumentPicker from "expo-document-picker";
 
+import { router, useLocalSearchParams } from "expo-router";
+
 import React, { useEffect, useState } from "react";
 
 import {
-  Alert,
+  ActivityIndicator,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   SafeAreaView,
@@ -22,7 +23,8 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  View,
+  TouchableOpacity,
+  View
 } from "react-native";
 
 const THEME = {
@@ -55,36 +57,119 @@ const FormInput = ({ label, icon, ...props }: any) => (
   </View>
 );
 
-const FormPicker = ({
+const FormSelect = ({
   label,
   icon,
   selectedValue,
   onValueChange,
   items,
-}: any) => (
-  <View style={styles.fieldWrapper}>
-    <Text style={styles.fieldLabel}>{label}</Text>
-    <View style={styles.pickerRow}>
-      <Feather
-        name={icon}
-        size={18}
-        color={THEME.muted}
-        style={styles.fieldIcon}
-      />
-      <Picker
-        selectedValue={selectedValue}
-        onValueChange={onValueChange}
-        style={styles.pickerElement}
-        dropdownIconColor={THEME.primary}
+  placeholder,
+}: any) => {
+  const [modalVisible, setModalVisible] = useState(false);
+
+  const selectedItem = items.find(
+    (i: any) => i.value === selectedValue
+  );
+
+  return (
+    <View style={styles.fieldWrapper}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+
+      <TouchableOpacity
+        style={styles.inputRow}
+        activeOpacity={0.7}
+        onPress={() => setModalVisible(true)}
       >
-        <Picker.Item label={`Select ${label}`} value="" color={THEME.muted} />
-        {items.map((item: any) => (
-          <Picker.Item key={item.value} label={item.label} value={item.value} />
-        ))}
-      </Picker>
+        <Feather
+          name={icon}
+          size={18}
+          color={THEME.muted}
+          style={styles.fieldIcon}
+        />
+
+        <Text
+          style={[
+            styles.textInput,
+            {
+              lineHeight: 50,
+              color: selectedItem
+                ? THEME.text
+                : "#94A3B8",
+            },
+          ]}
+        >
+          {selectedItem
+            ? selectedItem.label
+            : placeholder || `Select ${label}`}
+        </Text>
+
+        <Feather
+          name="chevron-down"
+          size={18}
+          color={THEME.muted}
+        />
+      </TouchableOpacity>
+
+      <Modal transparent visible={modalVisible} animationType="slide">
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setModalVisible(false)}
+        >
+          <View style={styles.bottomSheet}>
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>{label}</Text>
+
+              <TouchableOpacity
+                onPress={() => setModalVisible(false)}
+              >
+                <Feather
+                  name="x"
+                  size={24}
+                  color={THEME.text}
+                />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ maxHeight: 300 }}>
+              {items.map((item: any) => (
+                <TouchableOpacity
+                  key={item.value}
+                  style={[
+                    styles.sheetItem,
+                    selectedValue === item.value &&
+                      styles.sheetItemActive,
+                  ]}
+                  onPress={() => {
+                    onValueChange(item.value);
+                    setModalVisible(false);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.sheetItemText,
+                      selectedValue === item.value &&
+                        styles.sheetItemTextActive,
+                    ]}
+                  >
+                    {item.label}
+                  </Text>
+
+                  {selectedValue === item.value && (
+                    <Feather
+                      name="check"
+                      size={18}
+                      color={THEME.primary}
+                    />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </Pressable>
+      </Modal>
     </View>
-  </View>
-);
+  );
+};
 
 const FormDatePicker = ({ label, icon, value, onDateChange }: any) => {
   const [show, setShow] = useState(false);
@@ -136,8 +221,56 @@ const SubSectionTitle = ({ title }: { title: string }) => (
   <Text style={styles.subSectionTitle}>{title}</Text>
 );
 
+const SuccessModal = ({
+  visible,
+  workerName,
+  onDone,
+}: {
+  visible: boolean;
+  workerName: string;
+  onDone: () => void;
+}) => (
+  <Modal transparent animationType="fade" visible={visible} onRequestClose={onDone}>
+   <View style={styles.successModalOverlay}>
+      <View style={styles.modalCard}>
+        <View style={styles.successRing}>
+          <View style={styles.successIconCircle}>
+            <Feather name="check" size={36} color="white" />
+          </View>
+        </View>
+
+        <Text style={styles.modalTitle}>Registration Successful!</Text>
+        {workerName ? (
+          <Text style={styles.modalWorkerName}>{workerName}</Text>
+        ) : null}
+        <Text style={styles.modalSubtitle}>
+          The worker has been registered successfully and is ready to be assigned.
+        </Text>
+
+        <TouchableOpacity style={styles.modalBtn} onPress={onDone} activeOpacity={0.85}>
+          <Feather name="arrow-right" size={16} color="white" style={{ marginRight: 6 }} />
+          <Text style={styles.modalBtnText}>Done</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  </Modal>
+);
+
 export default function RegisterWorker() {
+
   const [kycDocument, setKycDocument] = useState<any>(null);
+  
+  const [drivingLicenceDocument, setDrivingLicenceDocument] = useState<any>(null);
+ 
+  const [showSuccess, setShowSuccess] = useState(false);
+  
+  const [submittedName, setSubmittedName] = useState("");
+ 
+  const [loading, setLoading] = useState(false);
+ 
+  const { token } = useLocalSearchParams();
+
+  console.log("Received Token:", token);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -145,7 +278,7 @@ export default function RegisterWorker() {
     phone_number: "",
     password: "",
     full_name: "",
-    guardian_relation: "",
+    guardian_relation: "",   
     guardian_name: "",
     alternative_number: "",
     registration_date: new Date().toISOString(),
@@ -164,23 +297,33 @@ export default function RegisterWorker() {
     is_interstate: "",
     ilp_issue_date: "",
     ilp_expiry_date: "",
-    agent_unique_id: "",
+    // agent_unique_id removed ✂️
+    driving_licence_number: "",
   });
 
   const [states, setStates] = useState([]);
+ 
   const [districts, setDistricts] = useState([]);
+ 
   const [cities, setCities] = useState([]);
+ 
   const [locations, setLocations] = useState([]);
+ 
   const [categories, setCategories] = useState([]);
 
+  const [subCategories, setSubCategories] = useState([]);
+
   const dataGroups = {
-    workSubCats: [
-      { label: "Plumber", value: "11" },
-      { label: "Electrician", value: "12" },
+    relationOptions: [
+      { label: "Father", value: "father" },
+      { label: "Mother", value: "mother" },
+      { label: "Spouse", value: "spouse" },
+      { label: "Other", value: "other" },
     ],
+   
     booleanOptions: [
-      { label: "Yes", value: "true" },
-      { label: "No", value: "false" },
+      { label: "Yes", value: true },
+      { label: "No", value: false },
     ],
     kycDocTypes: [
       { label: "Aadhaar Card", value: "aadhaar" },
@@ -244,6 +387,7 @@ export default function RegisterWorker() {
       try {
         const response = await axios.get(`${ROOT_URL}/categories`);
         setCategories(response.data);
+        console.log("the categories are", JSON.stringify(response.data, null, 2))
       } catch (error) {
         console.log("Error fetching categories:", error);
       }
@@ -251,20 +395,62 @@ export default function RegisterWorker() {
     fetchCategories();
   }, []);
 
-  const handleChange = (key: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [key]: value }));
-  };
+  const handleChange = (key: string, value: any) => {
+
+
+  if (key === "work_category_id") {
+
+    const selectedCategory: any = categories.find(
+  (cat: any) => String(cat.id) === String(value)
+);
+
+   
+    const children =
+      selectedCategory?.recursive_children || [];
+
+  
+    setSubCategories(children);
+    console.log(
+  "Subcategories:",
+  JSON.stringify(children, null, 2)
+);
+
+    
+    setFormData((prev) => ({
+      ...prev,
+      work_category_id: value,
+      work_subcategory_id: "",
+    }));
+
+    return;
+  }
+
+  setFormData((prev) => ({
+    ...prev,
+    [key]: value,
+  }));
+};
 
   const pickDocument = async () => {
     const result = await DocumentPicker.getDocumentAsync({ type: "*/*" });
     if (!result.canceled) setKycDocument(result.assets[0]);
   };
 
+  const pickDrivingLicenceDocument = async () => {
+    const result = await DocumentPicker.getDocumentAsync({ type: "*/*" });
+    if (!result.canceled) setDrivingLicenceDocument(result.assets[0]);
+  };
+
+
   const handleSubmit = async () => {
     const payload = new FormData();
 
     (Object.keys(formData) as (keyof typeof formData)[]).forEach((key) => {
-      payload.append(key, formData[key]);
+      if (key === "is_interstate") {
+        payload.append(key, formData[key] === "true" ? "1" : "0");
+      } else {
+        payload.append(key, formData[key]);
+      }
     });
 
     if (kycDocument) {
@@ -275,51 +461,49 @@ export default function RegisterWorker() {
       } as any);
     }
 
-    console.log("===== REGISTRATION PAYLOAD =====");
-    console.log("Text Fields:", JSON.stringify(formData, null, 2));
-    console.log(
-      "KYC Document:",
-      kycDocument
-        ? { name: kycDocument.name, uri: kycDocument.uri, type: kycDocument.mimeType }
-        : "None",
-    );
-    console.log("================================");
+    if (drivingLicenceDocument) {
+      payload.append("driving_licence_document", {
+        uri: drivingLicenceDocument.uri,
+        name: drivingLicenceDocument.name,
+        type: drivingLicenceDocument.mimeType ?? "application/octet-stream",
+      } as any);
+    }
 
     try {
-      const response = await axios.post(
-        `${ROOT_URL}/workers/register`,
-        payload,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
+      setLoading(true);
+      console.log("the payload is", payload);
+
+      const url = token
+        ? `${ROOT_URL}/workers`
+        : `${ROOT_URL}/workers/register`;
+
+      const response = await axios.post(url, payload, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          ...(token && {
+            Authorization: `Bearer ${token}`,
+          }),
         },
-      );
-      console.log("the response is", response.data);
+      });
+
+      console.log("SUCCESS RESPONSE:", response.data);
+
+      setSubmittedName(formData.full_name || formData.name);
+      setShowSuccess(true);
+
     } catch (error: any) {
+      setLoading(false);
       console.log("❌ Worker Registration Failed");
 
       if (error.response) {
         console.log("📌 Status Code:", error.response.status);
         console.log("📌 Server Response:", error.response.data);
-
-        const errors = error.response.data?.errors;
-        if (errors) {
-          const errorMessages = Object.values(errors).flat().join("\n");
-          Alert.alert("Registration Failed", errorMessages);
-        } else {
-          Alert.alert(
-            "Error",
-            error.response.data?.message || "Something went wrong",
-          );
-        }
-      } else if (error.request) {
-        Alert.alert("Network Error", "No response received from server");
-      } else {
-        Alert.alert("Error", error.message);
       }
-
-      console.log("📌 Full Error Object:", error);
-    }
+    }finally {
+  setLoading(false);
+}
   };
+
 
   return (
     <SafeAreaView style={styles.safeContainer}>
@@ -392,16 +576,17 @@ export default function RegisterWorker() {
             {/* ── Section 2: Identity & Relations ── */}
             <SectionTitle title="Identity & Relations" />
 
+            {/* ── Relation is now a dropdown ── */}
             <View style={styles.row}>
               <View style={{ flex: 1, marginRight: 8 }}>
-                <FormInput
+                <FormSelect
                   label="Relation"
                   icon="users"
-                  placeholder="Father/Spouse"
-                  value={formData.guardian_relation}
-                  onChangeText={(v: string) =>
+                  selectedValue={formData.guardian_relation}
+                  onValueChange={(v: string) =>
                     handleChange("guardian_relation", v)
                   }
+                  items={dataGroups.relationOptions}
                 />
               </View>
               <View style={{ flex: 1.5 }}>
@@ -468,12 +653,11 @@ export default function RegisterWorker() {
               }
             />
 
-        
             <SectionTitle title="Location" />
 
             <View style={styles.row}>
               <View style={{ flex: 1, marginRight: 8 }}>
-                <FormPicker
+                <FormSelect
                   label="State"
                   icon="map"
                   selectedValue={formData.state_id}
@@ -485,7 +669,7 @@ export default function RegisterWorker() {
                 />
               </View>
               <View style={{ flex: 1 }}>
-                <FormPicker
+                <FormSelect
                   label="District"
                   icon="navigation"
                   selectedValue={formData.district_id}
@@ -502,7 +686,7 @@ export default function RegisterWorker() {
 
             <View style={styles.row}>
               <View style={{ flex: 1, marginRight: 8 }}>
-                <FormPicker
+                <FormSelect
                   label="City"
                   icon="map-pin"
                   selectedValue={formData.city_id}
@@ -514,7 +698,7 @@ export default function RegisterWorker() {
                 />
               </View>
               <View style={{ flex: 1 }}>
-                <FormPicker
+                <FormSelect
                   label="Location"
                   icon="crosshair"
                   selectedValue={formData.location_id}
@@ -532,7 +716,7 @@ export default function RegisterWorker() {
             {/* ── Section 5: Work Details ── */}
             <SectionTitle title="Work Details" />
 
-            <FormPicker
+            <FormSelect
               label="Category"
               icon="layers"
               selectedValue={formData.work_category_id}
@@ -541,18 +725,23 @@ export default function RegisterWorker() {
               }
               items={categories.map((cat: any) => ({
                 label: cat.name,
-                value: cat.id,
+               value: String(cat.id),
               }))}
             />
-            <FormPicker
-              label="Sub Category"
-              icon="grid"
-              selectedValue={formData.work_subcategory_id}
-              onValueChange={(v: string) =>
-                handleChange("work_subcategory_id", v)
-              }
-              items={dataGroups.workSubCats}
-            />
+           {subCategories.length > 0 && (
+  <FormSelect
+    label="Sub Category"
+    icon="grid"
+    selectedValue={formData.work_subcategory_id}
+    onValueChange={(v: string) =>
+      handleChange("work_subcategory_id", v)
+    }
+    items={subCategories.map((sub: any) => ({
+      label: sub.name,
+      value: String(sub.id),
+    }))}
+  />
+)}
             <FormInput
               label="Work Description"
               icon="info"
@@ -567,7 +756,7 @@ export default function RegisterWorker() {
             {/* ── Section 6: KYC & ILP ── */}
             <SectionTitle title="KYC & ILP" />
 
-            <FormPicker
+            <FormSelect
               label="KYC Document Type"
               icon="file-text"
               selectedValue={formData.kyc_document_type}
@@ -577,30 +766,41 @@ export default function RegisterWorker() {
               items={dataGroups.kycDocTypes}
             />
 
-            <View style={styles.row}>
-              <View style={{ flex: 1, marginRight: 8 }}>
-                <FormPicker
-                  label="Interstate?"
-                  icon="globe"
-                  selectedValue={formData.is_interstate}
-                  onValueChange={(v: string) =>
-                    handleChange("is_interstate", v)
-                  }
-                  items={dataGroups.booleanOptions}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
+            {/* ── Driving Licence Fields ── */}
+            {formData.kyc_document_type === "driving_license" && (
+              <>
                 <FormInput
-                  label="Agent ID"
-                  icon="tag"
-                  placeholder="ID Number"
-                  value={formData.agent_unique_id}
+                  label="Driving Licence Number"
+                  icon="credit-card"
+                  placeholder="e.g. AS01 20210012345"
+                  value={formData.driving_licence_number}
                   onChangeText={(v: string) =>
-                    handleChange("agent_unique_id", v)
+                    handleChange("driving_licence_number", v)
                   }
                 />
-              </View>
-            </View>
+                <Pressable
+                  style={styles.uploadBox}
+                  onPress={pickDrivingLicenceDocument}
+                >
+                  <Ionicons name="card-outline" size={24} color={THEME.primary} />
+                  <Text style={styles.uploadText}>
+                    {drivingLicenceDocument
+                      ? drivingLicenceDocument.name
+                      : "Tap to Upload Driving Licence"}
+                  </Text>
+                </Pressable>
+              </>
+            )}
+
+          <FormSelect
+              label="Interstate?"
+              icon="globe"
+              selectedValue={formData.is_interstate}
+              onValueChange={(v: string) =>
+                handleChange("is_interstate", v)
+              }
+              items={dataGroups.booleanOptions}
+            />
 
             <View style={styles.row}>
               <View style={{ flex: 1, marginRight: 8 }}>
@@ -634,22 +834,130 @@ export default function RegisterWorker() {
               </Text>
             </Pressable>
 
-            {/* ── Submit Button ── */}
-            <View style={styles.btnContainer}>
-              <Pressable style={styles.submitBtn} onPress={handleSubmit}>
-                <Text style={styles.submitBtnText}>Submit Registration</Text>
-                <Feather name="check-circle" size={18} color="white" />
-              </Pressable>
-            </View>
+<View style={styles.btnContainer}>
+  <Pressable
+    style={[
+      styles.submitBtn,
+      loading && styles.submitBtnDisabled
+    ]}
+    onPress={handleSubmit}
+    disabled={loading}
+  >
+    {loading ? (
+      <>
+        <ActivityIndicator color="white" />
+        <Text style={styles.submitBtnText}>
+          Submitting...
+        </Text>
+      </>
+    ) : (
+      <>
+        <Text style={styles.submitBtnText}>
+          Submit Registration
+        </Text>
+
+        <Feather
+          name="check-circle"
+          size={18}
+          color="white"
+        />
+      </>
+    )}
+  </Pressable>
+</View>
 
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+
+      <SuccessModal
+        visible={showSuccess}
+        workerName={submittedName}
+        onDone={() => {
+
+  setShowSuccess(false);
+
+
+  if (token) {
+
+    router.replace("/(tabs)");
+
+  } else {
+
+    router.replace("/(auth)");
+
+  }
+
+}}
+      />
+
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  modalOverlay: {
+  flex: 1,
+  backgroundColor: "rgba(15, 23, 42, 0.5)",
+  justifyContent: "flex-end",
+},
+successModalOverlay: {
+  flex: 1,
+  backgroundColor: "rgba(15, 23, 42, 0.5)",
+  justifyContent: "center",
+  alignItems: "center",
+},
+submitBtnDisabled: {
+  opacity: 0.7,
+},
+
+bottomSheet: {
+  backgroundColor: "white",
+  borderTopLeftRadius: 32,
+  borderTopRightRadius: 32,
+  padding: 24,
+  paddingBottom: 40,
+},
+
+sheetHeader: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginBottom: 20,
+},
+
+sheetTitle: {
+  fontSize: 20,
+  fontWeight: "800",
+  color: THEME.text,
+},
+
+sheetItem: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+  paddingVertical: 16,
+  borderBottomWidth: 1,
+  borderBottomColor: "#F1F5F9",
+},
+
+sheetItemActive: {
+  backgroundColor: "#F5F3FF",
+  borderRadius: 12,
+  paddingHorizontal: 10,
+},
+
+sheetItemText: {
+  fontSize: 16,
+  fontWeight: "600",
+  color: THEME.text,
+},
+
+sheetItemTextActive: {
+  color: THEME.primary,
+  fontWeight: "700",
+},
   safeContainer: { flex: 1, backgroundColor: THEME.bg },
   scrollArea: { paddingBottom: 60 },
   header: { padding: 24, paddingTop: 40, backgroundColor: THEME.card },
@@ -743,6 +1051,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#EEF2FF",
     marginTop: 10,
+    marginBottom: 20,
   },
   uploadText: {
     color: THEME.primary,
@@ -761,4 +1070,69 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   submitBtnText: { color: "white", fontSize: 16, fontWeight: "700" },
+
+
+  modalCard: {
+    backgroundColor: "#fff",
+    borderRadius: 28,
+    padding: 32,
+    alignItems: "center",
+    width: "82%",
+    elevation: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+  },
+  successRing: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: "#D1FAE5",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  successIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: THEME.accent,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: THEME.text,
+    marginBottom: 6,
+    textAlign: "center",
+  },
+  modalWorkerName: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: THEME.primary,
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    color: THEME.muted,
+    textAlign: "center",
+    marginBottom: 28,
+    lineHeight: 20,
+  },
+  modalBtn: {
+    backgroundColor: THEME.primary,
+    paddingVertical: 14,
+    paddingHorizontal: 48,
+    borderRadius: 14,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  modalBtnText: {
+    color: "white",
+    fontWeight: "700",
+    fontSize: 15,
+  },
 });
