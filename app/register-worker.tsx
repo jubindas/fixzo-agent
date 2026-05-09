@@ -297,7 +297,6 @@ export default function RegisterWorker() {
     is_interstate: "",
     ilp_issue_date: "",
     ilp_expiry_date: "",
-    // agent_unique_id removed ✂️
     driving_licence_number: "",
   });
 
