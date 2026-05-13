@@ -1,9 +1,15 @@
 import { ROOT_URL } from "@/url";
+
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+
 import AsyncStorage from "@react-native-async-storage/async-storage";
+
 import axios from "axios";
+
 import { useRouter } from "expo-router";
+
 import React, { useCallback, useEffect, useState } from "react";
+
 import {
   ActivityIndicator,
   FlatList,
@@ -12,7 +18,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  View
+  View,
 } from "react-native";
 
 type Worker = {
@@ -31,10 +37,15 @@ type Worker = {
 
 export default function Index() {
   const router = useRouter();
+
   const [searchQuery, setSearchQuery] = useState("");
+
   const [workers, setWorkers] = useState<Worker[]>([]);
+
   const [loading, setLoading] = useState(true);
+
   const [refreshing, setRefreshing] = useState(false);
+
   const [token, setToken] = useState<string | null>(null);
 
   const fetchWorkers = async (authToken: string) => {
@@ -45,7 +56,7 @@ export default function Index() {
           Accept: "application/json",
         },
       });
-      setWorkers(Array.isArray(response.data) ? response.data : []); 
+      setWorkers(Array.isArray(response.data) ? response.data : []);
     } catch (error: any) {
       console.error("API Error:", error.response?.status);
     } finally {
@@ -79,23 +90,35 @@ export default function Index() {
   });
 
   const getInitials = (name: string) => {
-    return name ? name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2) : "W";
+    return name
+      ? name
+          .split(" ")
+          .map((n) => n[0])
+          .join("")
+          .toUpperCase()
+          .substring(0, 2)
+      : "W";
   };
 
   const renderWorkerItem = ({ item }: { item: Worker }) => {
-    const registrationDate = new Date(item.created_at).toLocaleDateString('en-GB', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
-    });
+    const registrationDate = new Date(item.created_at).toLocaleDateString(
+      "en-GB",
+      {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      },
+    );
 
     return (
-      <Pressable style={styles.card} android_ripple={{ color: '#f1f5f9' }}>
+      <Pressable style={styles.card} android_ripple={{ color: "#f1f5f9" }}>
         {/* Letter Avatar instead of Image */}
         <View style={styles.avatarPlaceholder}>
-          <Text style={styles.avatarText}>{getInitials(item.worker_profile?.full_name || item.name)}</Text>
+          <Text style={styles.avatarText}>
+            {getInitials(item.worker_profile?.full_name || item.name)}
+          </Text>
         </View>
-        
+
         <View style={styles.infoContainer}>
           <View style={styles.row}>
             <Text style={styles.name} numberOfLines={1}>
@@ -112,22 +135,29 @@ export default function Index() {
             <Text style={styles.metaText}>{item.phone_number}</Text>
             <View style={styles.dot} />
             <Feather name="user" size={12} color="#64748b" />
-            <Text style={styles.metaText}>{item.worker_profile?.guardian_name} ({item.worker_profile?.guardian_relation})</Text>
+            <Text style={styles.metaText}>
+              {item.worker_profile?.guardian_name} (
+              {item.worker_profile?.guardian_relation})
+            </Text>
           </View>
 
           <View style={styles.metaRow}>
             <MaterialCommunityIcons name="tools" size={14} color="#6366f1" />
-            <Text style={[styles.metaText, { color: '#4f46e5', fontWeight: '600' }]}>
+            <Text
+              style={[styles.metaText, { color: "#4f46e5", fontWeight: "600" }]}
+            >
               {item.worker_profile?.work_description || "Expert"}
             </Text>
           </View>
 
           <View style={styles.footerRow}>
-             <View style={styles.metaRow}>
-                <Ionicons name="location-sharp" size={13} color="#f43f5e" />
-                <Text style={styles.metaText}>{item.worker_profile?.district?.name || "Local"}</Text>
-             </View>
-             <Text style={styles.dateText}>Reg: {registrationDate}</Text>
+            <View style={styles.metaRow}>
+              <Ionicons name="location-sharp" size={13} color="#f43f5e" />
+              <Text style={styles.metaText}>
+                {item.worker_profile?.district?.name || "Local"}
+              </Text>
+            </View>
+            <Text style={styles.dateText}>Reg: {registrationDate}</Text>
           </View>
         </View>
       </Pressable>
@@ -141,7 +171,30 @@ export default function Index() {
           <Text style={styles.greeting}>Workforce Management</Text>
           <Text style={styles.title}>Service Experts</Text>
         </View>
-        <Pressable style={styles.addBtn} onPress={() => router.push({ pathname: "/register-worker", params: { token } })}>
+        <Pressable
+          style={styles.addBtn}
+          onPress={async () => {
+            const storedUser = await AsyncStorage.getItem("user-fixzo");
+
+            let agent_unique_id = "";
+
+            if (storedUser) {
+              const user = JSON.parse(storedUser);
+
+              if (user?.role?.name === "agent") {
+                agent_unique_id = user.agent_unique_id;
+              }
+            }
+
+            router.push({
+              pathname: "/register-worker",
+              params: {
+                token,
+                agent_unique_id,
+              },
+            });
+          }}
+        >
           <View style={styles.addBtnInner}>
             <Feather name="plus" size={18} color="#fff" />
             <Text style={styles.addBtnText}>Add</Text>
@@ -163,7 +216,9 @@ export default function Index() {
       </View>
 
       {loading ? (
-        <View style={styles.loaderContainer}><ActivityIndicator size="large" color="#2563eb" /></View>
+        <View style={styles.loaderContainer}>
+          <ActivityIndicator size="large" color="#2563eb" />
+        </View>
       ) : (
         <FlatList
           data={filteredWorkers}
@@ -171,7 +226,13 @@ export default function Index() {
           renderItem={renderWorkerItem}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 30 }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#2563eb"]} />}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={["#2563eb"]}
+            />
+          }
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <Feather name="users" size={48} color="#cbd5e1" />

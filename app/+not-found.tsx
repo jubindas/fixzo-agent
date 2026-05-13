@@ -1,8 +1,11 @@
 import { Feather } from "@expo/vector-icons";
+
 import { Link, Stack } from "expo-router";
+
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 export default function NotFoundScreen() {
+
   return (
     <>
       {/* This ensures the header title is set if you're using a Stack */}
@@ -40,7 +43,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: 24,
-    backgroundColor: "#f8fafc", // Matches your soft blue/slate background
+    backgroundColor: "#f8fafc", 
   },
   iconCircle: {
     width: 100,

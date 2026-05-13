@@ -1,5 +1,7 @@
 import { Feather } from "@expo/vector-icons";
+
 import React from "react";
+
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 
 
@@ -31,7 +33,7 @@ const EARNINGS = [
 export default function Wallet() {
   return (
     <View style={styles.container}>
-      {/* HEADER */}
+      
       <View style={styles.header}>
         <Text style={styles.title}>My Wallet</Text>
         <Pressable style={styles.iconBtn}>
@@ -39,7 +41,6 @@ export default function Wallet() {
         </Pressable>
       </View>
 
-      {/* BALANCE CARD */}
       <View style={styles.balanceCard}>
         <View>
           <Text style={styles.balanceLabel}>Total Earnings</Text>
@@ -50,7 +51,7 @@ export default function Wallet() {
         </View>
       </View>
 
-      {/* QUICK ACTIONS */}
+      
       <View style={styles.actionRow}>
         <View style={styles.actionItem}>
           <View style={[styles.actionIcon, { backgroundColor: "#eff6ff" }]}>
@@ -66,7 +67,7 @@ export default function Wallet() {
         </View>
       </View>
 
-      {/* TRANSACTION LIST */}
+    
       <View style={styles.listHeader}>
         <Text style={styles.listTitle}>Recent Settlements</Text>
         <Text style={styles.viewAll}>View All</Text>

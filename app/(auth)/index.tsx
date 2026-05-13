@@ -1,7 +1,11 @@
 import { ROOT_URL } from "@/url";
+
 import AsyncStorage from "@react-native-async-storage/async-storage";
+
 import axios from "axios";
+
 import { useRouter } from "expo-router";
+
 import {
   ChevronRight,
   Eye,
@@ -11,6 +15,7 @@ import {
   ShieldCheck,
 } from "lucide-react-native";
 import React, { useState } from "react";
+
 import {
   ActivityIndicator,
   Alert,
@@ -27,6 +32,7 @@ import {
 type Role = "Agent" | "Worker";
 
 export default function Login() {
+
   const router = useRouter();
 
   const [selectedRole, setSelectedRole] = useState<Role>("Agent");

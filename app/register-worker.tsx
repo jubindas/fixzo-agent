@@ -24,7 +24,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 
 const THEME = {
@@ -67,9 +67,7 @@ const FormSelect = ({
 }: any) => {
   const [modalVisible, setModalVisible] = useState(false);
 
-  const selectedItem = items.find(
-    (i: any) => i.value === selectedValue
-  );
+  const selectedItem = items.find((i: any) => i.value === selectedValue);
 
   return (
     <View style={styles.fieldWrapper}>
@@ -92,22 +90,14 @@ const FormSelect = ({
             styles.textInput,
             {
               lineHeight: 50,
-              color: selectedItem
-                ? THEME.text
-                : "#94A3B8",
+              color: selectedItem ? THEME.text : "#94A3B8",
             },
           ]}
         >
-          {selectedItem
-            ? selectedItem.label
-            : placeholder || `Select ${label}`}
+          {selectedItem ? selectedItem.label : placeholder || `Select ${label}`}
         </Text>
 
-        <Feather
-          name="chevron-down"
-          size={18}
-          color={THEME.muted}
-        />
+        <Feather name="chevron-down" size={18} color={THEME.muted} />
       </TouchableOpacity>
 
       <Modal transparent visible={modalVisible} animationType="slide">
@@ -119,14 +109,8 @@ const FormSelect = ({
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>{label}</Text>
 
-              <TouchableOpacity
-                onPress={() => setModalVisible(false)}
-              >
-                <Feather
-                  name="x"
-                  size={24}
-                  color={THEME.text}
-                />
+              <TouchableOpacity onPress={() => setModalVisible(false)}>
+                <Feather name="x" size={24} color={THEME.text} />
               </TouchableOpacity>
             </View>
 
@@ -136,8 +120,7 @@ const FormSelect = ({
                   key={item.value}
                   style={[
                     styles.sheetItem,
-                    selectedValue === item.value &&
-                      styles.sheetItemActive,
+                    selectedValue === item.value && styles.sheetItemActive,
                   ]}
                   onPress={() => {
                     onValueChange(item.value);
@@ -155,11 +138,7 @@ const FormSelect = ({
                   </Text>
 
                   {selectedValue === item.value && (
-                    <Feather
-                      name="check"
-                      size={18}
-                      color={THEME.primary}
-                    />
+                    <Feather name="check" size={18} color={THEME.primary} />
                   )}
                 </TouchableOpacity>
               ))}
@@ -230,8 +209,13 @@ const SuccessModal = ({
   workerName: string;
   onDone: () => void;
 }) => (
-  <Modal transparent animationType="fade" visible={visible} onRequestClose={onDone}>
-   <View style={styles.successModalOverlay}>
+  <Modal
+    transparent
+    animationType="fade"
+    visible={visible}
+    onRequestClose={onDone}
+  >
+    <View style={styles.successModalOverlay}>
       <View style={styles.modalCard}>
         <View style={styles.successRing}>
           <View style={styles.successIconCircle}>
@@ -244,11 +228,21 @@ const SuccessModal = ({
           <Text style={styles.modalWorkerName}>{workerName}</Text>
         ) : null}
         <Text style={styles.modalSubtitle}>
-          The worker has been registered successfully and is ready to be assigned.
+          The worker has been registered successfully and is ready to be
+          assigned.
         </Text>
 
-        <TouchableOpacity style={styles.modalBtn} onPress={onDone} activeOpacity={0.85}>
-          <Feather name="arrow-right" size={16} color="white" style={{ marginRight: 6 }} />
+        <TouchableOpacity
+          style={styles.modalBtn}
+          onPress={onDone}
+          activeOpacity={0.85}
+        >
+          <Feather
+            name="arrow-right"
+            size={16}
+            color="white"
+            style={{ marginRight: 6 }}
+          />
           <Text style={styles.modalBtnText}>Done</Text>
         </TouchableOpacity>
       </View>
@@ -257,20 +251,20 @@ const SuccessModal = ({
 );
 
 export default function RegisterWorker() {
-
   const [kycDocument, setKycDocument] = useState<any>(null);
-  
-  const [drivingLicenceDocument, setDrivingLicenceDocument] = useState<any>(null);
- 
-  const [showSuccess, setShowSuccess] = useState(false);
-  
-  const [submittedName, setSubmittedName] = useState("");
- 
-  const [loading, setLoading] = useState(false);
- 
-  const { token } = useLocalSearchParams();
 
-  console.log("Received Token:", token);
+  const [drivingLicenceDocument, setDrivingLicenceDocument] =
+    useState<any>(null);
+
+  const [showSuccess, setShowSuccess] = useState(false);
+
+  const [submittedName, setSubmittedName] = useState("");
+
+  const [loading, setLoading] = useState(false);
+
+  const { token, agent_unique_id } = useLocalSearchParams();
+
+  console.log("Received Token:", token, agent_unique_id);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -278,7 +272,7 @@ export default function RegisterWorker() {
     phone_number: "",
     password: "",
     full_name: "",
-    guardian_relation: "",   
+    guardian_relation: "",
     guardian_name: "",
     alternative_number: "",
     registration_date: new Date().toISOString(),
@@ -297,17 +291,19 @@ export default function RegisterWorker() {
     is_interstate: "",
     ilp_issue_date: "",
     ilp_expiry_date: "",
-    driving_licence_number: "",
+    driver_license_number: "",
+    payment_method: "cash",
+    transaction_id: "",
   });
 
   const [states, setStates] = useState([]);
- 
+
   const [districts, setDistricts] = useState([]);
- 
+
   const [cities, setCities] = useState([]);
- 
+
   const [locations, setLocations] = useState([]);
- 
+
   const [categories, setCategories] = useState([]);
 
   const [subCategories, setSubCategories] = useState([]);
@@ -319,7 +315,7 @@ export default function RegisterWorker() {
       { label: "Spouse", value: "spouse" },
       { label: "Other", value: "other" },
     ],
-   
+
     booleanOptions: [
       { label: "Yes", value: true },
       { label: "No", value: false },
@@ -386,7 +382,10 @@ export default function RegisterWorker() {
       try {
         const response = await axios.get(`${ROOT_URL}/categories`);
         setCategories(response.data);
-        console.log("the categories are", JSON.stringify(response.data, null, 2))
+        console.log(
+          "the categories are",
+          JSON.stringify(response.data, null, 2),
+        );
       } catch (error) {
         console.log("Error fetching categories:", error);
       }
@@ -395,40 +394,30 @@ export default function RegisterWorker() {
   }, []);
 
   const handleChange = (key: string, value: any) => {
+    if (key === "work_category_id") {
+      const selectedCategory: any = categories.find(
+        (cat: any) => String(cat.id) === String(value),
+      );
 
+      const children = selectedCategory?.recursive_children || [];
 
-  if (key === "work_category_id") {
+      setSubCategories(children);
+      console.log("Subcategories:", JSON.stringify(children, null, 2));
 
-    const selectedCategory: any = categories.find(
-  (cat: any) => String(cat.id) === String(value)
-);
+      setFormData((prev) => ({
+        ...prev,
+        work_category_id: value,
+        work_subcategory_id: "",
+      }));
 
-   
-    const children =
-      selectedCategory?.recursive_children || [];
+      return;
+    }
 
-  
-    setSubCategories(children);
-    console.log(
-  "Subcategories:",
-  JSON.stringify(children, null, 2)
-);
-
-    
     setFormData((prev) => ({
       ...prev,
-      work_category_id: value,
-      work_subcategory_id: "",
+      [key]: value,
     }));
-
-    return;
-  }
-
-  setFormData((prev) => ({
-    ...prev,
-    [key]: value,
-  }));
-};
+  };
 
   const pickDocument = async () => {
     const result = await DocumentPicker.getDocumentAsync({ type: "*/*" });
@@ -439,7 +428,6 @@ export default function RegisterWorker() {
     const result = await DocumentPicker.getDocumentAsync({ type: "*/*" });
     if (!result.canceled) setDrivingLicenceDocument(result.assets[0]);
   };
-
 
   const handleSubmit = async () => {
     const payload = new FormData();
@@ -452,6 +440,10 @@ export default function RegisterWorker() {
       }
     });
 
+    if (agent_unique_id) {
+      payload.append("agent_unique_id", String(agent_unique_id));
+    }
+
     if (kycDocument) {
       payload.append("kyc_document", {
         uri: kycDocument.uri,
@@ -461,7 +453,7 @@ export default function RegisterWorker() {
     }
 
     if (drivingLicenceDocument) {
-      payload.append("driving_licence_document", {
+      payload.append("driver_license_image", {
         uri: drivingLicenceDocument.uri,
         name: drivingLicenceDocument.name,
         type: drivingLicenceDocument.mimeType ?? "application/octet-stream",
@@ -489,7 +481,6 @@ export default function RegisterWorker() {
 
       setSubmittedName(formData.full_name || formData.name);
       setShowSuccess(true);
-
     } catch (error: any) {
       setLoading(false);
       console.log("❌ Worker Registration Failed");
@@ -498,11 +489,22 @@ export default function RegisterWorker() {
         console.log("📌 Status Code:", error.response.status);
         console.log("📌 Server Response:", error.response.data);
       }
-    }finally {
-  setLoading(false);
-}
+    } finally {
+      setLoading(false);
+    }
   };
 
+  const selectedCategory: any = categories.find(
+    (cat: any) => String(cat.id) === String(formData.work_category_id),
+  );
+
+  const selectedSubCategory: any = subCategories.find(
+    (sub: any) => String(sub.id) === String(formData.work_subcategory_id),
+  );
+
+  const isDrivingCategory =
+    selectedCategory?.name?.toLowerCase().includes("driving") ||
+    selectedSubCategory?.name?.toLowerCase().includes("driving");
 
   return (
     <SafeAreaView style={styles.safeContainer}>
@@ -521,7 +523,6 @@ export default function RegisterWorker() {
           </View>
 
           <View style={styles.mainCard}>
-
             {/* ── Section 1: Account Credentials ── */}
             <SectionTitle title="Account Credentials" />
 
@@ -572,6 +573,22 @@ export default function RegisterWorker() {
               }
             />
 
+            <FormSelect
+              label="Payment Method"
+              icon="credit-card"
+              selectedValue={formData.payment_method}
+              onValueChange={(v: string) => handleChange("payment_method", v)}
+              items={[{ label: "Cash", value: "cash" }]}
+            />
+
+            <FormInput
+              label="Transaction ID"
+              icon="hash"
+              placeholder="Optional"
+              value={formData.transaction_id}
+              onChangeText={(v: string) => handleChange("transaction_id", v)}
+            />
+
             {/* ── Section 2: Identity & Relations ── */}
             <SectionTitle title="Identity & Relations" />
 
@@ -594,9 +611,7 @@ export default function RegisterWorker() {
                   icon="user-check"
                   placeholder="Guardian Name"
                   value={formData.guardian_name}
-                  onChangeText={(v: string) =>
-                    handleChange("guardian_name", v)
-                  }
+                  onChangeText={(v: string) => handleChange("guardian_name", v)}
                 />
               </View>
             </View>
@@ -637,9 +652,7 @@ export default function RegisterWorker() {
               placeholder="Home address"
               multiline
               value={formData.permanent_address}
-              onChangeText={(v: string) =>
-                handleChange("permanent_address", v)
-              }
+              onChangeText={(v: string) => handleChange("permanent_address", v)}
             />
             <FormInput
               label="Permanent Pincode"
@@ -647,9 +660,7 @@ export default function RegisterWorker() {
               placeholder="781xxx"
               keyboardType="number-pad"
               value={formData.permanent_pincode}
-              onChangeText={(v: string) =>
-                handleChange("permanent_pincode", v)
-              }
+              onChangeText={(v: string) => handleChange("permanent_pincode", v)}
             />
 
             <SectionTitle title="Location" />
@@ -672,9 +683,7 @@ export default function RegisterWorker() {
                   label="District"
                   icon="navigation"
                   selectedValue={formData.district_id}
-                  onValueChange={(v: string) =>
-                    handleChange("district_id", v)
-                  }
+                  onValueChange={(v: string) => handleChange("district_id", v)}
                   items={districts.map((item: any) => ({
                     label: item.name,
                     value: item.id,
@@ -701,9 +710,7 @@ export default function RegisterWorker() {
                   label="Location"
                   icon="crosshair"
                   selectedValue={formData.location_id}
-                  onValueChange={(v: string) =>
-                    handleChange("location_id", v)
-                  }
+                  onValueChange={(v: string) => handleChange("location_id", v)}
                   items={locations.map((item: any) => ({
                     label: item.name,
                     value: item.id,
@@ -719,37 +726,66 @@ export default function RegisterWorker() {
               label="Category"
               icon="layers"
               selectedValue={formData.work_category_id}
-              onValueChange={(v: string) =>
-                handleChange("work_category_id", v)
-              }
+              onValueChange={(v: string) => handleChange("work_category_id", v)}
               items={categories.map((cat: any) => ({
                 label: cat.name,
-               value: String(cat.id),
+                value: String(cat.id),
               }))}
             />
-           {subCategories.length > 0 && (
-  <FormSelect
-    label="Sub Category"
-    icon="grid"
-    selectedValue={formData.work_subcategory_id}
-    onValueChange={(v: string) =>
-      handleChange("work_subcategory_id", v)
-    }
-    items={subCategories.map((sub: any) => ({
-      label: sub.name,
-      value: String(sub.id),
-    }))}
-  />
-)}
+            {subCategories.length > 0 && (
+              <FormSelect
+                label="Sub Category"
+                icon="grid"
+                selectedValue={formData.work_subcategory_id}
+                onValueChange={(v: string) =>
+                  handleChange("work_subcategory_id", v)
+                }
+                items={subCategories.map((sub: any) => ({
+                  label: sub.name,
+                  value: String(sub.id),
+                }))}
+              />
+            )}
+
+             {/* ── Driving Licence Fields ── */}
+            {isDrivingCategory && (
+              <>
+                <FormInput
+                  label="Driving Licence Number"
+                  icon="credit-card"
+                  placeholder="e.g. AS01 20210012345"
+                  value={formData.driver_license_number}
+                  onChangeText={(v: string) =>
+                    handleChange("driver_license_number", v)
+                  }
+                />
+
+                <Pressable
+                  style={styles.uploadBox}
+                  onPress={pickDrivingLicenceDocument}
+                >
+                  <Ionicons
+                    name="card-outline"
+                    size={24}
+                    color={THEME.primary}
+                  />
+
+                  <Text style={styles.uploadText}>
+                    {drivingLicenceDocument
+                      ? drivingLicenceDocument.name
+                      : "Tap to Upload Driving Licence"}
+                  </Text>
+                </Pressable>
+              </>
+            )}
+            
             <FormInput
               label="Work Description"
               icon="info"
               placeholder="Describe skills"
               multiline
               value={formData.work_description}
-              onChangeText={(v: string) =>
-                handleChange("work_description", v)
-              }
+              onChangeText={(v: string) => handleChange("work_description", v)}
             />
 
             {/* ── Section 6: KYC & ILP ── */}
@@ -765,39 +801,13 @@ export default function RegisterWorker() {
               items={dataGroups.kycDocTypes}
             />
 
-            {/* ── Driving Licence Fields ── */}
-            {formData.kyc_document_type === "driving_license" && (
-              <>
-                <FormInput
-                  label="Driving Licence Number"
-                  icon="credit-card"
-                  placeholder="e.g. AS01 20210012345"
-                  value={formData.driving_licence_number}
-                  onChangeText={(v: string) =>
-                    handleChange("driving_licence_number", v)
-                  }
-                />
-                <Pressable
-                  style={styles.uploadBox}
-                  onPress={pickDrivingLicenceDocument}
-                >
-                  <Ionicons name="card-outline" size={24} color={THEME.primary} />
-                  <Text style={styles.uploadText}>
-                    {drivingLicenceDocument
-                      ? drivingLicenceDocument.name
-                      : "Tap to Upload Driving Licence"}
-                  </Text>
-                </Pressable>
-              </>
-            )}
+           
 
-          <FormSelect
+            <FormSelect
               label="Interstate?"
               icon="globe"
               selectedValue={formData.is_interstate}
-              onValueChange={(v: string) =>
-                handleChange("is_interstate", v)
-              }
+              onValueChange={(v: string) => handleChange("is_interstate", v)}
               items={dataGroups.booleanOptions}
             />
 
@@ -827,136 +837,115 @@ export default function RegisterWorker() {
             <Pressable style={styles.uploadBox} onPress={pickDocument}>
               <Ionicons name="cloud-upload" size={24} color={THEME.primary} />
               <Text style={styles.uploadText}>
-                {kycDocument
-                  ? kycDocument.name
-                  : "Tap to Upload KYC Document"}
+                {kycDocument ? kycDocument.name : "Tap to Upload KYC Document"}
               </Text>
             </Pressable>
 
-<View style={styles.btnContainer}>
-  <Pressable
-    style={[
-      styles.submitBtn,
-      loading && styles.submitBtnDisabled
-    ]}
-    onPress={handleSubmit}
-    disabled={loading}
-  >
-    {loading ? (
-      <>
-        <ActivityIndicator color="white" />
-        <Text style={styles.submitBtnText}>
-          Submitting...
-        </Text>
-      </>
-    ) : (
-      <>
-        <Text style={styles.submitBtnText}>
-          Submit Registration
-        </Text>
+            <View style={styles.btnContainer}>
+              <Pressable
+                style={[styles.submitBtn, loading && styles.submitBtnDisabled]}
+                onPress={handleSubmit}
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <ActivityIndicator color="white" />
+                    <Text style={styles.submitBtnText}>Submitting...</Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.submitBtnText}>
+                      Submit Registration
+                    </Text>
 
-        <Feather
-          name="check-circle"
-          size={18}
-          color="white"
-        />
-      </>
-    )}
-  </Pressable>
-</View>
-
+                    <Feather name="check-circle" size={18} color="white" />
+                  </>
+                )}
+              </Pressable>
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-
 
       <SuccessModal
         visible={showSuccess}
         workerName={submittedName}
         onDone={() => {
+          setShowSuccess(false);
 
-  setShowSuccess(false);
-
-
-  if (token) {
-
-    router.replace("/(tabs)");
-
-  } else {
-
-    router.replace("/(auth)");
-
-  }
-
-}}
+          if (token) {
+            router.replace("/(tabs)");
+          } else {
+            router.replace("/(auth)");
+          }
+        }}
       />
-
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   modalOverlay: {
-  flex: 1,
-  backgroundColor: "rgba(15, 23, 42, 0.5)",
-  justifyContent: "flex-end",
-},
-successModalOverlay: {
-  flex: 1,
-  backgroundColor: "rgba(15, 23, 42, 0.5)",
-  justifyContent: "center",
-  alignItems: "center",
-},
-submitBtnDisabled: {
-  opacity: 0.7,
-},
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.5)",
+    justifyContent: "flex-end",
+  },
+  successModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  submitBtnDisabled: {
+    opacity: 0.7,
+  },
 
-bottomSheet: {
-  backgroundColor: "white",
-  borderTopLeftRadius: 32,
-  borderTopRightRadius: 32,
-  padding: 24,
-  paddingBottom: 40,
-},
+  bottomSheet: {
+    backgroundColor: "white",
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    padding: 24,
+    paddingBottom: 40,
+  },
 
-sheetHeader: {
-  flexDirection: "row",
-  justifyContent: "space-between",
-  alignItems: "center",
-  marginBottom: 20,
-},
+  sheetHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
 
-sheetTitle: {
-  fontSize: 20,
-  fontWeight: "800",
-  color: THEME.text,
-},
+  sheetTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: THEME.text,
+  },
 
-sheetItem: {
-  flexDirection: "row",
-  justifyContent: "space-between",
-  alignItems: "center",
-  paddingVertical: 16,
-  borderBottomWidth: 1,
-  borderBottomColor: "#F1F5F9",
-},
+  sheetItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+  },
 
-sheetItemActive: {
-  backgroundColor: "#F5F3FF",
-  borderRadius: 12,
-  paddingHorizontal: 10,
-},
+  sheetItemActive: {
+    backgroundColor: "#F5F3FF",
+    borderRadius: 12,
+    paddingHorizontal: 10,
+  },
 
-sheetItemText: {
-  fontSize: 16,
-  fontWeight: "600",
-  color: THEME.text,
-},
+  sheetItemText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: THEME.text,
+  },
 
-sheetItemTextActive: {
-  color: THEME.primary,
-  fontWeight: "700",
-},
+  sheetItemTextActive: {
+    color: THEME.primary,
+    fontWeight: "700",
+  },
   safeContainer: { flex: 1, backgroundColor: THEME.bg },
   scrollArea: { paddingBottom: 60 },
   header: { padding: 24, paddingTop: 40, backgroundColor: THEME.card },
@@ -1069,7 +1058,6 @@ sheetItemTextActive: {
     gap: 8,
   },
   submitBtnText: { color: "white", fontSize: 16, fontWeight: "700" },
-
 
   modalCard: {
     backgroundColor: "#fff",
