@@ -462,7 +462,7 @@ export default function RegisterWorker() {
 
     try {
       setLoading(true);
-      console.log("the payload is", payload);
+      console.log("Worker Payload : ", payload);
 
       const url = token
         ? `${ROOT_URL}/workers`
@@ -747,7 +747,7 @@ export default function RegisterWorker() {
               />
             )}
 
-             {/* ── Driving Licence Fields ── */}
+            {/* ── Driving Licence Fields ── */}
             {isDrivingCategory && (
               <>
                 <FormInput
@@ -778,7 +778,7 @@ export default function RegisterWorker() {
                 </Pressable>
               </>
             )}
-            
+
             <FormInput
               label="Work Description"
               icon="info"
@@ -800,8 +800,6 @@ export default function RegisterWorker() {
               }
               items={dataGroups.kycDocTypes}
             />
-
-           
 
             <FormSelect
               label="Interstate?"
