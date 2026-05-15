@@ -357,6 +357,7 @@ export default function RegisterWorker() {
     const fetchCities = async () => {
       try {
         const response = await axios.get(`${ROOT_URL}/location/cities`);
+        console.log("city",response)
         setCities(response.data);
       } catch (error) {
         console.log("Error fetching cities:", error);

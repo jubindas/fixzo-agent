@@ -7,7 +7,6 @@ import React from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function TabLayout() {
-  
   const insets = useSafeAreaInsets();
 
   return (
@@ -45,6 +44,16 @@ export default function TabLayout() {
         }}
       />
 
+      <Tabs.Screen
+        name="collection"
+        options={{
+          title: "Collection",
+          tabBarIcon: ({ color, focused }) => (
+            <Feather name="briefcase" size={focused ? 24 : 22} color={color} />
+          ),
+        }}
+      />
+
       {/* WALLET SCREEN */}
       <Tabs.Screen
         name="wallet"
@@ -60,19 +69,15 @@ export default function TabLayout() {
         }}
       />
 
-    <Tabs.Screen
-  name="user"
-  options={{
-    title: "Account",
-    tabBarIcon: ({ color, focused }) => (
-      <Feather
+      <Tabs.Screen
         name="user"
-        size={focused ? 24 : 22}
-        color={color}
+        options={{
+          title: "Account",
+          tabBarIcon: ({ color, focused }) => (
+            <Feather name="user" size={focused ? 24 : 22} color={color} />
+          ),
+        }}
       />
-    ),
-  }}
-/>
     </Tabs>
   );
 }
